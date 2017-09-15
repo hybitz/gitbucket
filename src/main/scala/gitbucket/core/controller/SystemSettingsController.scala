@@ -64,6 +64,10 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
         "ssl"                      -> trim(label("Enable SSL", optional(boolean()))),
         "keystore"                 -> trim(label("Keystore", optional(text())))
     )(Ldap.apply)),
+    "ssoAuthentication"        -> trim(label("SSO", boolean())),
+    "sso"                      -> optionalIfNotChecked("ssoAuthentication", mapping(
+        "httpSsoHeader"            -> trim(label("HTTP Single Sign-On header", text(required)))
+    )(Sso.apply)),
     "skinName" -> trim(label("AdminLTE skin name", text(required)))
   )(SystemSettings.apply).verifying { settings =>
     Vector(

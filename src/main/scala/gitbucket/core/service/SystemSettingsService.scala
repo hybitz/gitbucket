@@ -54,6 +54,12 @@ trait SystemSettingsService {
           ldap.keystore.foreach(x => props.setProperty(LdapKeystore, x))
         }
       }
+      props.setProperty(SsoAuthentication, settings.ssoAuthentication.toString)
+      if(settings.ssoAuthentication){
+        settings.sso.map { sso =>
+          props.setProperty(SsoHttpSsoHeader, sso.httpSsoHeader)
+        }
+      }
       props.setProperty(SkinName, settings.skinName.toString)
       using(new java.io.FileOutputStream(GitBucketConf)){ out =>
         props.store(out, null)
@@ -113,6 +119,13 @@ trait SystemSettingsService {
         } else {
           None
         },
+        getValue(props, SsoAuthentication, false),
+        if(getValue(props, SsoAuthentication, false)){
+          Some(Sso(
+            getValue(props, SsoHttpSsoHeader, "")))
+        } else {
+          None
+        },
         getValue(props, SkinName, "skin-blue")
       )
     }
@@ -139,6 +152,8 @@ object SystemSettingsService {
     smtp: Option[Smtp],
     ldapAuthentication: Boolean,
     ldap: Option[Ldap],
+    ssoAuthentication: Boolean,
+    sso: Option[Sso],
     skinName: String){
     def baseUrl(request: HttpServletRequest): String = baseUrl.fold(request.baseUrl)(_.stripSuffix("/"))
 
@@ -166,6 +181,9 @@ object SystemSettingsService {
     tls: Option[Boolean],
     ssl: Option[Boolean],
     keystore: Option[String])
+
+  case class Sso(
+    httpSsoHeader: String)
 
   case class Smtp(
     host: String,
@@ -222,6 +240,8 @@ object SystemSettingsService {
   private val LdapTls = "ldap.tls"
   private val LdapSsl = "ldap.ssl"
   private val LdapKeystore = "ldap.keystore"
+  private val SsoAuthentication = "sso_authentication"
+  private val SsoHttpSsoHeader = "sso.http_sso_header"
   private val SkinName = "skinName"
 
   private def getValue[A: ClassTag](props: java.util.Properties, key: String, default: A): A = {
