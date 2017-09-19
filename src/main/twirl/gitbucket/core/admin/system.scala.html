@@ -252,12 +252,12 @@
           <fieldset>
             <label class="checkbox">
               <input type="checkbox" id="ssoAuthentication" name="ssoAuthentication"@if(context.settings.sso){ checked} />
-              SSO
+              HTTP Header
             </label>
           </fieldset>
           <div class="sso">
             <div class="form-group">
-              <label class="control-label col-md-3" for="ssoHttpSsoHeader">HTTP Single Sign-On header</label>
+              <label class="control-label col-md-3" for="ssoHttpSsoHeader">HTTP header by reverse proxy</label>
               <div class="col-md-9">
                 <input type="text" id="ssoHttpSsoHeader" name="sso.httpSsoHeader" class="form-control" value="@context.settings.sso.map(_.httpSsoHeader)"/>
                 <span id="error-sso_httpSsoHeader" class="error"></span>
