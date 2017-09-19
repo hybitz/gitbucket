@@ -8,6 +8,7 @@ import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.util.{Keys, LDAPUtil, ReferrerAuthenticator, UsersAuthenticator}
 import io.github.gitbucket.scalatra.forms._
 import org.scalatra.Ok
+import org.slf4j.LoggerFactory
 
 
 class IndexController extends IndexControllerBase
@@ -18,6 +19,8 @@ class IndexController extends IndexControllerBase
 trait IndexControllerBase extends ControllerBase {
   self: RepositoryService with ActivityService with AccountService with RepositorySearchService
     with UsersAuthenticator with ReferrerAuthenticator =>
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   case class SignInForm(userName: String, password: String, hash: Option[String])
 
@@ -50,7 +53,20 @@ trait IndexControllerBase extends ControllerBase {
     if(redirect.isDefined && redirect.get.startsWith("/")){
       flash += Keys.Flash.Redirect -> redirect.get
     }
-    gitbucket.core.html.signin(flash.get("userName"), flash.get("password"), flash.get("error"))
+
+    if (context.settings.ssoAuthentication && context.settings.sso.isDefined) {
+      val ssoSettings = context.settings.sso.get
+      val email = request.getHeader(ssoSettings.httpSsoHeader);
+      val account = getAccountByMailAddress(email, false).get
+      if (account != null) {
+        logger.info(s"HTTP header by reverse proxy found: ${email}")
+        signin(account, None)
+      } else {
+        gitbucket.core.html.signin(flash.get("userName"), flash.get("password"), flash.get("error"))
+      }
+    } else {
+      gitbucket.core.html.signin(flash.get("userName"), flash.get("password"), flash.get("error"))
+    }
   }
 
   post("/signin", signinForm){ form =>
