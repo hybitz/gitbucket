@@ -66,7 +66,7 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
     )(Ldap.apply)),
     "ssoAuthentication"        -> trim(label("SSO", boolean())),
     "sso"                      -> optionalIfNotChecked("ssoAuthentication", mapping(
-        "httpSsoHeader"            -> trim(label("HTTP Single Sign-On header", text(required)))
+        "httpSsoHeader"            -> trim(label("HTTP header by reverse proxy", text(required)))
     )(Sso.apply)),
     "skinName" -> trim(label("AdminLTE skin name", text(required)))
   )(SystemSettings.apply).verifying { settings =>
