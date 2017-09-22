@@ -57,7 +57,7 @@ trait IndexControllerBase extends ControllerBase {
     if (context.settings.ssoAuthentication && context.settings.sso.isDefined) {
       val ssoSettings = context.settings.sso.get
       val email = request.getHeader(ssoSettings.httpSsoHeader);
-      val account = getAccountByMailAddress(email, false).get
+      val account = getAccountByMailAddress(email, false).orNull
       if (account != null) {
         logger.info(s"HTTP header by reverse proxy found: ${email}")
         signin(account, None)
