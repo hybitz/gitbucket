@@ -155,17 +155,16 @@ object SystemSettingsService {
     ssoAuthentication: Boolean,
     sso: Option[Sso],
     skinName: String){
-    def baseUrl(request: HttpServletRequest): String = baseUrl.fold(request.baseUrl)(_.stripSuffix("/"))
 
-    def sshAddress:Option[SshAddress] =
-      for {
-        host <- sshHost if ssh
-      }
-      yield SshAddress(
-        host,
-        sshPort.getOrElse(DefaultSshPort),
-        "git"
-      )
+    def baseUrl(request: HttpServletRequest): String = baseUrl.fold {
+      val url = request.getRequestURL.toString
+      val len = url.length - (request.getRequestURI.length - request.getContextPath.length)
+      url.substring(0, len).stripSuffix("/")
+    } (_.stripSuffix("/"))
+
+    def sshAddress:Option[SshAddress] = sshHost.collect { case host if ssh =>
+      SshAddress(host, sshPort.getOrElse(DefaultSshPort), "git")
+    }
   }
 
   case class Ldap(
