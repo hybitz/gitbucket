@@ -57,11 +57,12 @@ trait IndexControllerBase extends ControllerBase {
     if (context.settings.ssoAuthentication && context.settings.sso.isDefined) {
       val ssoSettings = context.settings.sso.get
       val email = request.getHeader(ssoSettings.httpSsoHeader);
-      val account = getAccountByMailAddress(email, false).orNull
+      val account = if (email != null) getAccountByMailAddress(email, false).orNull else null
       if (account != null) {
-        logger.info(s"HTTP header by reverse proxy found: ${email}")
+        logger.info(s"HTTP header by reverse proxy: account found for ${email}")
         signin(account, None)
       } else {
+        logger.info(s"HTTP header by reverse proxy: account not found for ${email}")
         gitbucket.core.html.signin(flash.get("userName"), flash.get("password"), flash.get("error"))
       }
     } else {
