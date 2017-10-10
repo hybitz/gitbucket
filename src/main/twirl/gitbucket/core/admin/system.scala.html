@@ -263,6 +263,12 @@
                 <span id="error-sso_httpSsoHeader" class="error"></span>
               </div>
             </div>
+            <div class="form-group">
+              <label class="control-label col-md-3">Show Logout Link</label>
+              <div class="col-md-9">
+                <input type="checkbox" name="sso.logout"@if(context.settings.sso.flatMap(_.logout).getOrElse(false)){ checked}/>
+              </div>
+            </div>
           </div>
           <!--====================================================================-->
           <!-- Notification email -->

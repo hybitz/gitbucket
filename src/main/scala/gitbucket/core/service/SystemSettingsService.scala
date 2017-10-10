@@ -58,6 +58,7 @@ trait SystemSettingsService {
       if(settings.ssoAuthentication){
         settings.sso.map { sso =>
           props.setProperty(SsoHttpSsoHeader, sso.httpSsoHeader)
+          sso.logout.foreach(x => props.setProperty(SsoLogout, x.toString))
         }
       }
       props.setProperty(SkinName, settings.skinName.toString)
@@ -122,7 +123,8 @@ trait SystemSettingsService {
         getValue(props, SsoAuthentication, false),
         if(getValue(props, SsoAuthentication, false)){
           Some(Sso(
-            getValue(props, SsoHttpSsoHeader, "")))
+            getValue(props, SsoHttpSsoHeader, ""),
+            getOptionValue[Boolean](props, SsoLogout, None)))
         } else {
           None
         },
@@ -182,7 +184,8 @@ object SystemSettingsService {
     keystore: Option[String])
 
   case class Sso(
-    httpSsoHeader: String)
+    httpSsoHeader: String,
+    logout: Option[Boolean])
 
   case class Smtp(
     host: String,
@@ -241,6 +244,7 @@ object SystemSettingsService {
   private val LdapKeystore = "ldap.keystore"
   private val SsoAuthentication = "sso_authentication"
   private val SsoHttpSsoHeader = "sso.http_sso_header"
+  private val SsoLogout = "sso.logout"
   private val SkinName = "skinName"
 
   private def getValue[A: ClassTag](props: java.util.Properties, key: String, default: A): A = {
