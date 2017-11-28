@@ -295,15 +295,15 @@
           </fieldset>
           <div class="sso">
             <div class="form-group">
-              <label class="control-label col-md-3" for="ssoHttpSsoHeader">HTTP header by reverse proxy</label>
-              <div class="col-md-9">
+              <label class="control-label col-md-2" for="ssoHttpSsoHeader">HTTP header by reverse proxy</label>
+              <div class="col-md-10">
                 <input type="text" id="ssoHttpSsoHeader" name="sso.httpSsoHeader" class="form-control" value="@context.settings.sso.map(_.httpSsoHeader)"/>
                 <span id="error-sso_httpSsoHeader" class="error"></span>
               </div>
             </div>
             <div class="form-group">
-              <label class="control-label col-md-3">Show Logout Link</label>
-              <div class="col-md-9">
+              <label class="control-label col-md-2">Show Logout Link</label>
+              <div class="col-md-10">
                 <input type="checkbox" name="sso.logout"@if(context.settings.sso.flatMap(_.logout).getOrElse(false)){ checked}/>
               </div>
             </div>
