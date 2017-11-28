@@ -131,6 +131,12 @@ span.header-version {
   font-size: small;
 }
 
+.main-header .logo img {
+  width: 24px;
+  height: 24px;
+  display: inline;
+}
+
 /* ======================================================================== */
 /* General Styles */
 /* ======================================================================== */
@@ -576,6 +582,11 @@ pre.blob {
   background-color: white;
   padding-left: 20px;
   font-size: 12px;
+}
+
+div.markdown-body pre.plain {
+  background: white;
+  font-size: 14px;
 }
 
 #readme {

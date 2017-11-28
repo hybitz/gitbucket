@@ -1,18 +1,21 @@
 import com.typesafe.sbt.license.{LicenseInfo, DepModuleInfo}
+import com.typesafe.sbt.pgp.PgpKeys._
 
 val Organization = "io.github.gitbucket"
 val Name = "gitbucket"
-val GitBucketVersion = "4.18.0"
-val ScalatraVersion = "2.5.0"
-val JettyVersion = "9.3.19.v20170502"
+val GitBucketVersion = "4.19.0-SNAPSHOT"
+val ScalatraVersion = "2.6.1"
+val JettyVersion = "9.4.7.v20170914"
 
-lazy val root = (project in file(".")).enablePlugins(SbtTwirl, JettyPlugin)
+lazy val root = (project in file(".")).enablePlugins(SbtTwirl, ScalatraPlugin, JRebelPlugin).settings(
+
+)
 
 sourcesInBase := false
 organization := Organization
 name := Name
 version := GitBucketVersion
-scalaVersion := "2.12.3"
+scalaVersion := "2.12.4"
 
 // dependency settings
 resolvers ++= Seq(
@@ -23,12 +26,12 @@ resolvers ++= Seq(
   "amateras-snapshot" at "http://amateras.sourceforge.jp/mvn-snapshot/"
 )
 libraryDependencies ++= Seq(
-  "org.eclipse.jgit"                %  "org.eclipse.jgit.http.server" % "4.8.0.201706111038-r",
-  "org.eclipse.jgit"                %  "org.eclipse.jgit.archive"     % "4.8.0.201706111038-r",
+  "org.eclipse.jgit"                %  "org.eclipse.jgit.http.server" % "4.9.0.201710071750-r",
+  "org.eclipse.jgit"                %  "org.eclipse.jgit.archive"     % "4.9.0.201710071750-r",
   "org.scalatra"                    %% "scalatra"                     % ScalatraVersion,
   "org.scalatra"                    %% "scalatra-json"                % ScalatraVersion,
+  "org.scalatra"                    %% "scalatra-forms"               % ScalatraVersion,
   "org.json4s"                      %% "json4s-jackson"               % "3.5.1",
-  "io.github.gitbucket"             %% "scalatra-forms"               % "1.1.0",
   "commons-io"                      %  "commons-io"                   % "2.5",
   "io.github.gitbucket"             %  "solidbase"                    % "1.0.2",
   "io.github.gitbucket"             %  "markedj"                      % "1.0.15",
@@ -38,10 +41,9 @@ libraryDependencies ++= Seq(
   "org.apache.sshd"                 %  "apache-sshd"                  % "1.4.0" exclude("org.slf4j","slf4j-jdk14"),
   "org.apache.tika"                 %  "tika-core"                    % "1.14",
   "com.github.takezoe"              %% "blocking-slick-32"            % "0.0.10",
-  "joda-time"                       %  "joda-time"                    % "2.9.9",
   "com.novell.ldap"                 %  "jldap"                        % "2009-10-07",
   "com.h2database"                  %  "h2"                           % "1.4.195",
-  "org.mariadb.jdbc"                %  "mariadb-java-client"          % "2.0.3",
+  "org.mariadb.jdbc"                %  "mariadb-java-client"          % "2.1.2",
   "org.postgresql"                  %  "postgresql"                   % "42.0.0",
   "ch.qos.logback"                  %  "logback-classic"              % "1.2.3",
   "com.zaxxer"                      %  "HikariCP"                     % "2.6.1",
@@ -89,17 +91,22 @@ assemblyMergeStrategy in assembly := {
 }
 
 // JRebel
-Seq(jrebelSettings: _*)
+//Seq(jrebelSettings: _*)
 
-jrebel.webLinks += (target in webappPrepare).value
-jrebel.enabled := System.getenv().get("JREBEL") != null
+//jrebel.webLinks += (target in webappPrepare).value
+//jrebel.enabled := System.getenv().get("JREBEL") != null
 javaOptions in Jetty ++= Option(System.getenv().get("JREBEL")).toSeq.flatMap { path =>
-  Seq("-noverify", "-XX:+UseConcMarkSweepGC", "-XX:+CMSClassUnloadingEnabled", s"-javaagent:${path}")
+ Seq("-noverify", "-XX:+UseConcMarkSweepGC", "-XX:+CMSClassUnloadingEnabled", s"-javaagent:${path}")
+}
+
+// Exclude a war file from published artifacts
+signedArtifacts := {
+  packagedArtifacts.value.filterNot { case (artifact, file) => file.getName.endsWith(".war") }
 }
 
 // Create executable war file
-val executableConfig = config("executable").hide
-Keys.ivyConfigurations += executableConfig
+val ExecutableConfig = config("executable").hide
+Keys.ivyConfigurations += ExecutableConfig
 libraryDependencies ++= Seq(
   "org.eclipse.jetty" % "jetty-security"     % JettyVersion % "executable",
   "org.eclipse.jetty" % "jetty-webapp"       % JettyVersion % "executable",
@@ -128,7 +135,7 @@ executableKey := {
   IO delete temp
 
   // include jetty classes
-  val jettyJars = Keys.update.value select configurationFilter(name = executableConfig.name)
+  val jettyJars = Keys.update.value select configurationFilter(name = ExecutableConfig.name)
   jettyJars foreach { jar =>
     IO unzip (jar, temp, (name:String) =>
       (name startsWith "javax/") ||
@@ -160,17 +167,17 @@ executableKey := {
       s"https://github.com/gitbucket/${plugin}/releases/download/${version}/${plugin}_${scalaBinaryVersion.value}-${version}.jar"
     }
     log info s"Download: ${url}"
-    IO download(new java.net.URL(url), pluginsDir / s"${plugin}_${scalaBinaryVersion.value}-${version}.jar")
+    IO transfer(new java.net.URL(url).openStream, pluginsDir / s"${plugin}_${scalaBinaryVersion.value}-${version}.jar")
   }
 
   // zip it up
   IO delete (temp / "META-INF" / "MANIFEST.MF")
-  val contentMappings   = (temp.*** --- PathFinder(temp)).get pair relativeTo(temp)
+  val contentMappings   = (temp.allPaths --- PathFinder(temp)).get pair { file => IO.relativizeFile(temp, file) }
   val manifest          = new JarManifest
   manifest.getMainAttributes put (AttrName.MANIFEST_VERSION, "1.0")
   manifest.getMainAttributes put (AttrName.MAIN_CLASS,       "JettyLauncher")
   val outputFile    = workDir / warName
-  IO jar (contentMappings, outputFile, manifest)
+  IO jar (contentMappings.map { case (file, path) => (file, path.toString) } , outputFile, manifest)
 
   // generate checksums
   Seq(
@@ -190,7 +197,7 @@ executableKey := {
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (version.value.trim.endsWith("SNAPSHOT")) Some("snapshots" at nexus + "content/repositories/snapshots")
-  else                             Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+  else                                         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
 publishMavenStyle := true
 pomIncludeRepository := { _ => false }
