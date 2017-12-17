@@ -3,7 +3,7 @@ import com.typesafe.sbt.pgp.PgpKeys._
 
 val Organization = "io.github.gitbucket"
 val Name = "gitbucket"
-val GitBucketVersion = "4.19.0-SNAPSHOT"
+val GitBucketVersion = "4.19.2"
 val ScalatraVersion = "2.6.1"
 val JettyVersion = "9.4.7.v20170914"
 
@@ -26,8 +26,8 @@ resolvers ++= Seq(
   "amateras-snapshot" at "http://amateras.sourceforge.jp/mvn-snapshot/"
 )
 libraryDependencies ++= Seq(
-  "org.eclipse.jgit"                %  "org.eclipse.jgit.http.server" % "4.9.0.201710071750-r",
-  "org.eclipse.jgit"                %  "org.eclipse.jgit.archive"     % "4.9.0.201710071750-r",
+  "org.eclipse.jgit"                %  "org.eclipse.jgit.http.server" % "4.9.1.201712030800-r",
+  "org.eclipse.jgit"                %  "org.eclipse.jgit.archive"     % "4.9.1.201712030800-r",
   "org.scalatra"                    %% "scalatra"                     % ScalatraVersion,
   "org.scalatra"                    %% "scalatra-json"                % ScalatraVersion,
   "org.scalatra"                    %% "scalatra-forms"               % ScalatraVersion,
@@ -43,7 +43,7 @@ libraryDependencies ++= Seq(
   "com.github.takezoe"              %% "blocking-slick-32"            % "0.0.10",
   "com.novell.ldap"                 %  "jldap"                        % "2009-10-07",
   "com.h2database"                  %  "h2"                           % "1.4.195",
-  "org.mariadb.jdbc"                %  "mariadb-java-client"          % "2.1.2",
+  "org.mariadb.jdbc"                %  "mariadb-java-client"          % "2.2.0",
   "org.postgresql"                  %  "postgresql"                   % "42.0.0",
   "ch.qos.logback"                  %  "logback-classic"              % "1.2.3",
   "com.zaxxer"                      %  "HikariCP"                     % "2.6.1",
@@ -101,7 +101,7 @@ javaOptions in Jetty ++= Option(System.getenv().get("JREBEL")).toSeq.flatMap { p
 
 // Exclude a war file from published artifacts
 signedArtifacts := {
-  packagedArtifacts.value.filterNot { case (artifact, file) => file.getName.endsWith(".war") }
+  signedArtifacts.value.filterNot { case (_, file) => file.getName.endsWith(".war") || file.getName.endsWith(".war.asc") }
 }
 
 // Create executable war file
@@ -160,14 +160,10 @@ executableKey := {
   IO copyFile(Keys.baseDirectory.value / "plugins.json", pluginsDir / "plugins.json")
 
   val json = IO read(Keys.baseDirectory.value / "plugins.json")
-  PluginsJson.parse(json).foreach { case (plugin, version) =>
-    val url = if(plugin == "gitbucket-pages-plugin"){
-      s"https://github.com/gitbucket/${plugin}/releases/download/v${version}/${plugin}_${scalaBinaryVersion.value}-${version}.jar"
-    } else {
-      s"https://github.com/gitbucket/${plugin}/releases/download/${version}/${plugin}_${scalaBinaryVersion.value}-${version}.jar"
-    }
+  PluginsJson.parse(json).foreach { case (plugin, version, file) =>
+    val url = s"https://github.com/gitbucket/${plugin}/releases/download/${version}/${file}"
     log info s"Download: ${url}"
-    IO transfer(new java.net.URL(url).openStream, pluginsDir / s"${plugin}_${scalaBinaryVersion.value}-${version}.jar")
+    IO transfer(new java.net.URL(url).openStream, pluginsDir / file)
   }
 
   // zip it up

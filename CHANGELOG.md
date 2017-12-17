@@ -1,6 +1,13 @@
 # Changelog
 All changes to the project will be documented in this file.
 
+## 4.19.0 - 2 Dec 2017
+- [gitbucket-maven-repository-plugin](https://github.com/takezoe/gitbucket-maven-repository-plugin) is available
+- Upgrade to Scalatra 2.6
+- Improve layout of the system settings page
+- New extension point (`sshCommandProvider`)
+- Dropped [gitbucket-pages-plugin](https://github.com/gitbucket/gitbucket-pages-plugin) from bundled plugins temporary because we couldn't complete update for Scalatra 2.6 before this release.
+
 ## 4.18.0 - 14 Oct 2017
 - Form to reply to review comment
 - Display fullname in username suggestion

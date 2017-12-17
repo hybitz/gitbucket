@@ -25,6 +25,7 @@ import org.eclipse.jgit.dircache.{DirCache, DirCacheBuilder}
 import org.eclipse.jgit.errors.MissingObjectException
 import org.eclipse.jgit.lib._
 import org.eclipse.jgit.transport.{ReceiveCommand, ReceivePack}
+import org.json4s.jackson.Serialization
 import org.scalatra._
 import org.scalatra.i18n.Messages
 
@@ -148,12 +149,29 @@ trait RepositoryViewerControllerBase extends ControllerBase {
    * Displays the file list of the repository root and the default branch.
    */
   get("/:owner/:repository") {
-    params.get("go-get") match {
-      case Some("1") => defining(request.paths){ paths =>
-        getRepository(paths(0), paths(1)).map(gitbucket.core.html.goget(_))getOrElse NotFound()
+    val owner = params("owner")
+    val repository = params("repository")
+
+    if (RepositoryCreationService.isCreating(owner, repository)) {
+      gitbucket.core.repo.html.creating(owner, repository)
+    } else {
+      params.get("go-get") match {
+        case Some("1") => defining(request.paths) { paths =>
+          getRepository(owner, repository).map(gitbucket.core.html.goget(_)) getOrElse NotFound()
+        }
+        case _ => referrersOnly(fileList(_))
       }
-      case _ => referrersOnly(fileList(_))
     }
+  }
+
+  ajaxGet("/:owner/:repository/creating") {
+    val owner = params("owner")
+    val repository = params("repository")
+    contentType = formats("json")
+    Serialization.write(Map(
+      "creating" -> RepositoryCreationService.isCreating(owner, repository),
+      "error" -> RepositoryCreationService.getCreationError(owner, repository)
+    ))
   }
 
   /**
@@ -321,7 +339,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
       commit      = form.commit
     )
 
-    redirect(s"/${repository.owner}/${repository.name}/blob/${form.branch}/${
+    redirect(s"/${repository.owner}/${repository.name}/blob/${urlEncode(form.branch)}/${
       if (form.path.length == 0) urlEncode(form.newFileName) else s"${form.path}/${urlEncode(form.newFileName)}"
     }")
   })
@@ -403,7 +421,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
     contentType = formats("json")
     using(Git.open(getRepositoryDir(repository.owner, repository.name))){ git =>
       val last = git.log.add(git.getRepository.resolve(id)).addPath(path).setMaxCount(1).call.iterator.next.name
-      Map(
+      Serialization.write(Map(
         "root"  -> s"${context.baseUrl}/${repository.owner}/${repository.name}",
         "id"    -> id,
         "path"  -> path,
@@ -418,8 +436,9 @@ trait RepositoryViewerControllerBase extends ControllerBase {
             "prevPath" -> blame.prevPath,
             "commited" -> blame.commitTime.getTime,
             "message"  -> blame.message,
-            "lines"    -> blame.lines)
-        })
+            "lines" -> blame.lines
+          )
+        }))
     }
   })
 
@@ -432,18 +451,43 @@ trait RepositoryViewerControllerBase extends ControllerBase {
     try {
       using(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
         defining(JGitUtil.getRevCommitFromId(git, git.getRepository.resolve(id))) { revCommit =>
-          JGitUtil.getDiffs(git, id, true) match {
-            case (diffs, oldCommitId) =>
-              html.commit(id, new JGitUtil.CommitInfo(revCommit),
-                JGitUtil.getBranchesOfCommit(git, revCommit.getName),
-                JGitUtil.getTagsOfCommit(git, revCommit.getName),
-                getCommitComments(repository.owner, repository.name, id, true),
-                repository, diffs, oldCommitId, hasDeveloperRole(repository.owner, repository.name, context.loginAccount))
-          }
+          val diffs = JGitUtil.getDiffs(git, None, id, true, false)
+          val oldCommitId = JGitUtil.getParentCommitId(git, id)
+
+          html.commit(id, new JGitUtil.CommitInfo(revCommit),
+            JGitUtil.getBranchesOfCommit(git, revCommit.getName),
+            JGitUtil.getTagsOfCommit(git, revCommit.getName),
+            getCommitComments(repository.owner, repository.name, id, true),
+            repository, diffs, oldCommitId, hasDeveloperRole(repository.owner, repository.name, context.loginAccount))
         }
       }
     } catch {
       case e:MissingObjectException => NotFound()
+    }
+  })
+
+  get("/:owner/:repository/patch/:id")(referrersOnly { repository =>
+    try {
+      using(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
+        val diff = JGitUtil.getPatch(git, None, params("id"))
+        contentType = formats("txt")
+        diff
+      }
+    } catch {
+      case e:MissingObjectException => NotFound()
+    }
+  })
+
+  get("/:owner/:repository/patch/*...*")(referrersOnly { repository =>
+    try {
+      val Seq(fromId, toId) = multiParams("splat")
+      using(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
+        val diff = JGitUtil.getPatch(git, Some(fromId), toId)
+        contentType = formats("txt")
+        diff
+      }
+    } catch {
+      case e: MissingObjectException => NotFound()
     }
   })
 
@@ -614,7 +658,8 @@ trait RepositoryViewerControllerBase extends ControllerBase {
           repository.repository.originRepositoryName.getOrElse(repository.name)),
         getForkedRepositories(
           repository.repository.originUserName.getOrElse(repository.owner),
-          repository.repository.originRepositoryName.getOrElse(repository.name)),
+          repository.repository.originRepositoryName.getOrElse(repository.name)
+        ).map { repository => (repository.userName, repository.repositoryName) },
         context.loginAccount match {
           case None => List()
           case account: Option[Account] => getGroupsByUserName(account.get.userName)

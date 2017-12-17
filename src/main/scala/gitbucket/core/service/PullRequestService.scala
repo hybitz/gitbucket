@@ -79,7 +79,7 @@ trait PullRequestService { self: IssuesService with CommitsService =>
       commitIdFrom,
       commitIdTo)
 
-  def getPullRequestsByRequest(userName: String, repositoryName: String, branch: String, closed: Boolean)
+  def getPullRequestsByRequest(userName: String, repositoryName: String, branch: String, closed: Option[Boolean])
                               (implicit s: Session): List[PullRequest] =
     PullRequests
       .join(Issues).on { (t1, t2) => t1.byPrimaryKey(t2.userName, t2.repositoryName, t2.issueId) }
@@ -87,7 +87,7 @@ trait PullRequestService { self: IssuesService with CommitsService =>
         (t1.requestUserName       === userName.bind) &&
         (t1.requestRepositoryName === repositoryName.bind) &&
         (t1.requestBranch         === branch.bind) &&
-        (t2.closed                === closed.bind)
+        (t2.closed                === closed.get.bind, closed.isDefined)
       }
       .map { case (t1, t2) => t1 }
       .list
@@ -118,7 +118,7 @@ trait PullRequestService { self: IssuesService with CommitsService =>
    * Fetch pull request contents into refs/pull/${issueId}/head and update pull request table.
    */
   def updatePullRequests(owner: String, repository: String, branch: String)(implicit s: Session): Unit =
-    getPullRequestsByRequest(owner, repository, branch, false).foreach { pullreq =>
+    getPullRequestsByRequest(owner, repository, branch, Some(false)).foreach { pullreq =>
       if(Repositories.filter(_.byRepository(pullreq.userName, pullreq.repositoryName)).exists.run){
         // Update the git repository
         val (commitIdTo, commitIdFrom) = JGitUtil.updatePullRequest(
@@ -230,7 +230,7 @@ trait PullRequestService { self: IssuesService with CommitsService =>
         helpers.date(commit1.commitTime) == view.helpers.date(commit2.commitTime)
       }
 
-      val diffs = JGitUtil.getDiffs(newGit, oldId.getName, newId.getName, true, false)
+      val diffs = JGitUtil.getDiffs(newGit, Some(oldId.getName), newId.getName, true, false)
 
       (commits, diffs)
     }
@@ -244,8 +244,8 @@ object PullRequestService {
   case class PullRequestCount(userName: String, count: Int)
 
   case class MergeStatus(
-    hasConflict: Boolean,
-    commitStatues:List[CommitStatus],
+    conflictMessage: Option[String],
+    commitStatues: List[CommitStatus],
     branchProtection: ProtectedBranchService.ProtectedBranchInfo,
     branchIsOutOfDate: Boolean,
     hasUpdatePermission: Boolean,
@@ -253,12 +253,13 @@ object PullRequestService {
     hasMergePermission: Boolean,
     commitIdTo: String){
 
+    val hasConflict = conflictMessage.isDefined
     val statuses: List[CommitStatus] =
       commitStatues ++ (branchProtection.contexts.toSet -- commitStatues.map(_.context).toSet).map(CommitStatus.pending(branchProtection.owner, branchProtection.repository, _))
     val hasRequiredStatusProblem = needStatusCheck && branchProtection.contexts.exists(context => statuses.find(_.context == context).map(_.state) != Some(CommitState.SUCCESS))
     val hasProblem = hasRequiredStatusProblem || hasConflict || (statuses.nonEmpty && CommitState.combine(statuses.map(_.state).toSet) != CommitState.SUCCESS)
-    val canUpdate = branchIsOutOfDate && !hasConflict
-    val canMerge = hasMergePermission && !hasConflict && !hasRequiredStatusProblem
+    val canUpdate  = branchIsOutOfDate  && !hasConflict
+    val canMerge   = hasMergePermission && !hasConflict && !hasRequiredStatusProblem
     lazy val commitStateSummary:(CommitState, String) = {
       val stateMap = statuses.groupBy(_.state)
       val state = CommitState.combine(stateMap.keySet)
