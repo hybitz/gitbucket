@@ -1,6 +1,31 @@
 # Changelog
 All changes to the project will be documented in this file.
 
+## 4.20.0 - 23 Dec 2017
+
+- Squash and rebase merge strategy for pull requests
+- Quick pull request creation
+- Download patch from the diff view
+- Fork and create repository are proceeded asynchronously
+- Create new repository by copying existing git repository
+- Hide overflowed repository names in the sidebar
+- Support CreateEvent web hook
+- Display conflicting files if pull request can't be merged
+
+## 4.19.3 - 7 Dec 2017
+
+- Fix file uploading bug
+- Fix reply comment form behavior in the diff view
+
+## 4.19.2 - 3 Dec 2017
+
+- Fix routing bug in `CompositeScalatraFilter`
+- Resolve id attribute collision in the web hook editing form
+
+## 4.19.1 - 2 Dec 2017
+
+- Update gitbucket-notifications-plugin because it had a version compatibility issue
+
 ## 4.19.0 - 2 Dec 2017
 - [gitbucket-maven-repository-plugin](https://github.com/takezoe/gitbucket-maven-repository-plugin) is available
 - Upgrade to Scalatra 2.6
