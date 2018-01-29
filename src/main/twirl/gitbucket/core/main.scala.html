@@ -103,7 +103,7 @@
                         @if(context.loginAccount.get.isAdmin){
                           <li><a href="@context.path/admin/users">System administration</a></li>
                         }
-                        @if(context.settings.ssoAuthentication && context.settings.sso.isDefined && context.settings.sso.get.logout.getOrElse(false)){
+                        @if(!context.settings.ssoAuthentication || (context.settings.sso.isDefined && context.settings.sso.get.logout.getOrElse(false))){
                           <li><a href="@context.path/signout">Sign out</a></li>
                         }
                       </ul>
