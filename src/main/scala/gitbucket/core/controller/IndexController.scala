@@ -1,26 +1,39 @@
 package gitbucket.core.controller
 
+import java.net.URI
+
+import com.nimbusds.oauth2.sdk.id.State
+import com.nimbusds.openid.connect.sdk.Nonce
 import gitbucket.core.helper.xml
 import gitbucket.core.model.Account
 import gitbucket.core.service._
 import gitbucket.core.util.Implicits._
 import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.util.{Keys, LDAPUtil, ReferrerAuthenticator, UsersAuthenticator}
-import org.scalatra.forms._
 import org.scalatra.Ok
-import org.slf4j.LoggerFactory
+import org.scalatra.forms._
 
 
 class IndexController extends IndexControllerBase
-  with RepositoryService with ActivityService with AccountService with RepositorySearchService with IssuesService
-  with UsersAuthenticator with ReferrerAuthenticator
+  with RepositoryService
+  with ActivityService
+  with AccountService
+  with RepositorySearchService
+  with IssuesService
+  with UsersAuthenticator
+  with ReferrerAuthenticator
+  with AccountFederationService
+  with OpenIDConnectService
 
 
 trait IndexControllerBase extends ControllerBase {
-  self: RepositoryService with ActivityService with AccountService with RepositorySearchService
-    with UsersAuthenticator with ReferrerAuthenticator =>
-
-  private val logger = LoggerFactory.getLogger(getClass)
+  self: RepositoryService
+    with ActivityService
+    with AccountService
+    with RepositorySearchService
+    with UsersAuthenticator
+    with ReferrerAuthenticator
+    with OpenIDConnectService =>
 
   case class SignInForm(userName: String, password: String, hash: Option[String])
 
@@ -38,6 +51,7 @@ trait IndexControllerBase extends ControllerBase {
 //
 //  case class SearchForm(query: String, owner: String, repository: String)
 
+  case class OidcContext(state: State, nonce: Nonce, redirectBackURI: String)
 
   get("/"){
     context.loginAccount.map { account =>
@@ -59,10 +73,8 @@ trait IndexControllerBase extends ControllerBase {
       val email = request.getHeader(ssoSettings.httpSsoHeader);
       val account = if (email != null) getAccountByMailAddress(email, false).orNull else null
       if (account != null) {
-        logger.info(s"HTTP header by reverse proxy: account found for ${email}")
-        signin(account, None)
+        signin(account, redirect.get)
       } else {
-        logger.info(s"HTTP header by reverse proxy: account not found for ${email}")
         gitbucket.core.html.signin(flash.get("userName"), flash.get("password"), flash.get("error"))
       }
     } else {
@@ -72,13 +84,59 @@ trait IndexControllerBase extends ControllerBase {
 
   post("/signin", signinForm){ form =>
     authenticate(context.settings, form.userName, form.password) match {
-      case Some(account) => signin(account, form.hash)
-      case None          => {
+      case Some(account) =>
+        flash.get(Keys.Flash.Redirect) match {
+          case Some(redirectUrl: String) => signin(account, redirectUrl + form.hash.getOrElse(""))
+          case _ => signin(account)
+        }
+      case None =>
         flash += "userName" -> form.userName
         flash += "password" -> form.password
         flash += "error" -> "Sorry, your Username and/or Password is incorrect. Please try again."
         redirect("/signin")
+    }
+  }
+
+  /**
+    * Initiate an OpenID Connect authentication request.
+    */
+  post("/signin/oidc") {
+    context.settings.oidc.map { oidc =>
+      val redirectURI = new URI(s"$baseUrl/signin/oidc")
+      val authenticationRequest = createOIDCAuthenticationRequest(oidc.issuer, oidc.clientID, redirectURI)
+      val redirectBackURI = flash.get(Keys.Flash.Redirect) match {
+        case Some(redirectBackURI: String) => redirectBackURI + params.getOrElse("hash", "")
+        case _ => "/"
       }
+      session.setAttribute(Keys.Session.OidcContext, OidcContext(authenticationRequest.getState, authenticationRequest.getNonce, redirectBackURI))
+      redirect(authenticationRequest.toURI.toString)
+    } getOrElse {
+      NotFound()
+    }
+  }
+
+  /**
+    * Handle an OpenID Connect authentication response.
+    */
+  get("/signin/oidc") {
+    context.settings.oidc.map { oidc =>
+      val redirectURI = new URI(s"$baseUrl/signin/oidc")
+      session.get(Keys.Session.OidcContext) match {
+        case Some(context: OidcContext) =>
+          authenticate(params, redirectURI, context.state, context.nonce, oidc) map { account =>
+            signin(account, context.redirectBackURI)
+          } orElse {
+            flash += "error" -> "Sorry, authentication failed. Please try again."
+            session.invalidate()
+            redirect("/signin")
+          }
+        case _ =>
+          flash += "error" -> "Sorry, something wrong. Please try again."
+          session.invalidate()
+          redirect("/signin")
+      }
+    } getOrElse {
+      NotFound()
     }
   }
 
@@ -102,9 +160,9 @@ trait IndexControllerBase extends ControllerBase {
   }
 
   /**
-   * Set account information into HttpSession and redirect.
-   */
-  private def signin(account: Account, hash: Option[String]) = {
+    * Set account information into HttpSession and redirect.
+    */
+  private def signin(account: Account, redirectUrl: String = "/") = {
     session.setAttribute(Keys.Session.LoginAccount, account)
     updateLastLoginDate(account.userName)
 
@@ -112,14 +170,10 @@ trait IndexControllerBase extends ControllerBase {
       redirect("/" + account.userName + "/_edit")
     }
 
-    flash.get(Keys.Flash.Redirect).asInstanceOf[Option[String]].map { redirectUrl =>
-      if(redirectUrl.stripSuffix("/") == request.getContextPath){
-        redirect("/")
-      } else {
-        redirect(redirectUrl + hash.getOrElse(""))
-      }
-    }.getOrElse {
+    if (redirectUrl.stripSuffix("/") == request.getContextPath) {
       redirect("/")
+    } else {
+      redirect(redirectUrl)
     }
   }
 

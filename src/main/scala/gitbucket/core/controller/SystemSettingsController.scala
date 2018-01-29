@@ -2,26 +2,32 @@ package gitbucket.core.controller
 
 import java.io.FileInputStream
 
-import gitbucket.core.admin.html
-import gitbucket.core.service.{AccountService, RepositoryService, SystemSettingsService}
-import gitbucket.core.util.{AdminAuthenticator, Mailer}
-import gitbucket.core.ssh.SshServer
-import gitbucket.core.plugin.{PluginInfoBase, PluginRegistry, PluginRepository}
-import SystemSettingsService._
-import gitbucket.core.util.Implicits._
-import gitbucket.core.util.SyntaxSugars._
-import gitbucket.core.util.Directory._
-import gitbucket.core.util.StringUtil._
-import org.scalatra.forms._
-import org.apache.commons.io.{FileUtils, IOUtils}
-import org.scalatra.i18n.Messages
 import com.github.zafarkhaja.semver.{Version => Semver}
 import gitbucket.core.GitBucketCoreModule
-import scala.collection.JavaConverters._
+import gitbucket.core.admin.html
+import gitbucket.core.plugin.{PluginInfoBase, PluginRegistry, PluginRepository}
+import gitbucket.core.service.SystemSettingsService._
+import gitbucket.core.service.{AccountService, RepositoryService}
+import gitbucket.core.ssh.SshServer
+import gitbucket.core.util.Directory._
+import gitbucket.core.util.Implicits._
+import gitbucket.core.util.StringUtil._
+import gitbucket.core.util.SyntaxSugars._
+import gitbucket.core.util.{AdminAuthenticator, Mailer}
+import org.apache.commons.io.IOUtils
+import org.json4s.jackson.Serialization
+import org.scalatra._
+import org.scalatra.forms._
+import org.scalatra.i18n.Messages
 
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
 class SystemSettingsController extends SystemSettingsControllerBase
   with AccountService with RepositoryService with AdminAuthenticator
+
+case class Table(name: String, columns: Seq[Column])
+case class Column(name: String, primaryKey: Boolean)
 
 trait SystemSettingsControllerBase extends AccountManagementControllerBase {
   self: AccountService with RepositoryService with AdminAuthenticator =>
@@ -64,6 +70,13 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
         "ssl"                      -> trim(label("Enable SSL", optional(boolean()))),
         "keystore"                 -> trim(label("Keystore", optional(text())))
     )(Ldap.apply)),
+    "oidcAuthentication"       -> trim(label("OIDC", boolean())),
+    "oidc"                     -> optionalIfNotChecked("oidcAuthentication", mapping(
+        "issuer"                   -> trim(label("Issuer", text(required))),
+        "clientID"                 -> trim(label("Client ID", text(required))),
+        "clientSecret"             -> trim(label("Client secret", text(required))),
+        "jwsAlgorithm"             -> trim(label("Signature algorithm", optional(text())))
+    )(OIDC.apply)),
     "ssoAuthentication"        -> trim(label("SSO", boolean())),
     "sso"                      -> optionalIfNotChecked("ssoAuthentication", mapping(
         "httpSsoHeader"            -> trim(label("HTTP header by reverse proxy", text(required))),
@@ -156,6 +169,71 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
     "removed"    -> trim(label("Disable"     ,boolean()))
   )(EditGroupForm.apply)
 
+
+  get("/admin/dbviewer")(adminOnly {
+    val conn = request2Session(request).conn
+    val meta = conn.getMetaData
+    val tables = ListBuffer[Table]()
+    using(meta.getTables(null, "%", "%", Array("TABLE", "VIEW"))){ rs =>
+      while(rs.next()){
+        val tableName = rs.getString("TABLE_NAME")
+
+        val pkColumns = ListBuffer[String]()
+        using(meta.getPrimaryKeys(null, null, tableName)){ rs =>
+          while(rs.next()){
+            pkColumns += rs.getString("COLUMN_NAME").toUpperCase
+          }
+        }
+
+        val columns = ListBuffer[Column]()
+        using(meta.getColumns(null, "%", tableName, "%")){ rs =>
+          while(rs.next()){
+            val columnName = rs.getString("COLUMN_NAME").toUpperCase
+            columns += Column(columnName, pkColumns.contains(columnName))
+          }
+        }
+
+        tables += Table(tableName.toUpperCase, columns)
+      }
+    }
+    html.dbviewer(tables)
+  })
+
+  post("/admin/dbviewer/_query")(adminOnly {
+    contentType = formats("json")
+    params.get("query").collectFirst { case query if query.trim.nonEmpty =>
+      val trimmedQuery = query.trim
+      if(trimmedQuery.nonEmpty){
+        try {
+          val conn = request2Session(request).conn
+          using(conn.prepareStatement(query)){ stmt =>
+            if(trimmedQuery.toUpperCase.startsWith("SELECT")){
+              using(stmt.executeQuery()){ rs =>
+                val meta = rs.getMetaData
+                val columns = for(i <- 1 to meta.getColumnCount) yield {
+                  meta.getColumnName(i)
+                }
+                val result = ListBuffer[Map[String, String]]()
+                while(rs.next()){
+                  val row = columns.map { columnName =>
+                    columnName -> Option(rs.getObject(columnName)).map(_.toString).getOrElse("<NULL>")
+                  }.toMap
+                  result += row
+                }
+                Ok(Serialization.write(Map("type" -> "query", "columns" -> columns, "rows" -> result)))
+              }
+            } else {
+              val rows = stmt.executeUpdate()
+              Ok(Serialization.write(Map("type" -> "update", "rows" -> rows)))
+            }
+          }
+        } catch {
+          case e: Exception =>
+            Ok(Serialization.write(Map("type" -> "error", "message" -> e.toString)))
+        }
+      }
+    } getOrElse Ok(Serialization.write(Map("type" -> "error", "message" -> "query is empty")))
+  })
 
   get("/admin/system")(adminOnly {
     html.system(flash.get("info"))
@@ -265,12 +343,13 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
 
   get("/admin/users")(adminOnly {
     val includeRemoved = params.get("includeRemoved").map(_.toBoolean).getOrElse(false)
-    val users          = getAllUsers(includeRemoved)
+    val includeGroups = params.get("includeGroups").map(_.toBoolean).getOrElse(false)
+    val users          = getAllUsers(includeRemoved, includeGroups)
     val members        = users.collect { case account if(account.isGroupAccount) =>
       account.userName -> getGroupMembers(account.userName).map(_.userName)
     }.toMap
 
-    html.userlist(users, members, includeRemoved)
+    html.userlist(users, members, includeRemoved, includeGroups)
   })
 
   get("/admin/users/_newuser")(adminOnly {

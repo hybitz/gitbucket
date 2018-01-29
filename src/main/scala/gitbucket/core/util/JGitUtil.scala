@@ -151,9 +151,10 @@ object JGitUtil {
    *
    * @param name the module name
    * @param path the path in the repository
-   * @param url the repository url of this module
+   * @param repositoryUrl the repository url of this module
+   * @param viewerUrl the repository viewer url of this module
    */
-  case class SubmoduleInfo(name: String, path: String, url: String)
+  case class SubmoduleInfo(name: String, path: String, repositoryUrl: String, viewerUrl: String)
 
   case class BranchMergeInfo(ahead: Int, behind: Int, isMerged: Boolean)
 
@@ -252,9 +253,10 @@ object JGitUtil {
    * @param git the Git object
    * @param revision the branch name or commit id
    * @param path the directory path (optional)
+   * @param baseUrl the base url of GitBucket instance. This parameter is used to generate links of submodules (optional)
    * @return HTML of the file list
    */
-  def getFileList(git: Git, revision: String, path: String = "."): List[FileInfo] = {
+  def getFileList(git: Git, revision: String, path: String = ".", baseUrl: Option[String] = None): List[FileInfo] = {
     using(new RevWalk(git.getRepository)){ revWalk =>
       val objectId = git.getRepository.resolve(revision)
       if(objectId == null) return Nil
@@ -340,7 +342,7 @@ object JGitUtil {
       useTreeWalk(revCommit){ treeWalk =>
         while (treeWalk.next()) {
           val linkUrl = if (treeWalk.getFileMode(0) == FileMode.GITLINK) {
-            getSubmodules(git, revCommit.getTree).find(_.path == treeWalk.getPathString).map(_.url)
+            getSubmodules(git, revCommit.getTree, baseUrl).find(_.path == treeWalk.getPathString).map(_.viewerUrl)
           } else None
           fileList +:= (treeWalk.getObjectId(0), treeWalk.getFileMode(0), treeWalk.getNameString, treeWalk.getPathString, linkUrl)
         }
@@ -730,7 +732,7 @@ object JGitUtil {
   /**
    * Read submodule information from .gitmodules
    */
-  def getSubmodules(git: Git, tree: RevTree): List[SubmoduleInfo] = {
+  def getSubmodules(git: Git, tree: RevTree, baseUrl: Option[String]): List[SubmoduleInfo] = {
     val repository = git.getRepository
     getContentFromPath(git, tree, ".gitmodules", true).map { bytes =>
       (try {
@@ -738,7 +740,7 @@ object JGitUtil {
         config.getSubsections("submodule").asScala.map { module =>
           val path = config.getString("submodule", module, "path")
           val url  = config.getString("submodule", module, "url")
-          SubmoduleInfo(module, path, url)
+          SubmoduleInfo(module, path, url, StringUtil.getRepositoryViewerUrl(url, baseUrl))
         }
       } catch {
         case e: ConfigInvalidException => {
@@ -802,17 +804,22 @@ object JGitUtil {
     }
   }
 
+  def isLfsPointer(loader: ObjectLoader): Boolean = {
+    !loader.isLarge && new String(loader.getBytes(), "UTF-8").startsWith("version https://git-lfs.github.com/spec/v1")
+  }
+
   def getContentInfo(git: Git, path: String, objectId: ObjectId): ContentInfo = {
     // Viewer
     using(git.getRepository.getObjectDatabase){ db =>
       val loader = db.open(objectId)
+      val isLfs  = isLfsPointer(loader)
       val large  = FileUtil.isLarge(loader.getSize)
       val viewer = if(FileUtil.isImage(path)) "image" else if(large) "large" else "other"
       val bytes  = if(viewer == "other") JGitUtil.getContentFromId(git, objectId, false) else None
       val size = Some(getContentSize(loader))
 
       if(viewer == "other"){
-        if(bytes.isDefined && FileUtil.isText(bytes.get)){
+        if(!isLfs && bytes.isDefined && FileUtil.isText(bytes.get)){
           // text
           ContentInfo("text", size, Some(StringUtil.convertFromByteArray(bytes.get)), Some(StringUtil.detectEncoding(bytes.get)))
         } else {

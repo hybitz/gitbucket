@@ -4,7 +4,7 @@ import java.io.FileInputStream
 
 import gitbucket.core.api.ApiError
 import gitbucket.core.model.Account
-import gitbucket.core.service.{AccountService, SystemSettingsService,RepositoryService}
+import gitbucket.core.service.{AccountService, RepositoryService, SystemSettingsService}
 import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.util.Directory._
 import gitbucket.core.util.Implicits._
@@ -17,9 +17,10 @@ import org.scalatra.forms._
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import javax.servlet.{FilterChain, ServletRequest, ServletResponse}
 
+import is.tagomor.woothee.Classifier
+
 import scala.util.Try
 import net.coobird.thumbnailator.Thumbnails
-
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.revwalk.RevCommit
@@ -43,25 +44,11 @@ abstract class ControllerBase extends ScalatraFilter
   }
 
   override def doFilter(request: ServletRequest, response: ServletResponse, chain: FilterChain): Unit = try {
-    val httpRequest  = request.asInstanceOf[HttpServletRequest]
-    val httpResponse = response.asInstanceOf[HttpServletResponse]
-    val context      = request.getServletContext.getContextPath
-    val path         = httpRequest.getRequestURI.substring(context.length)
+    val httpRequest = request.asInstanceOf[HttpServletRequest]
+    val context     = request.getServletContext.getContextPath
+    val path        = httpRequest.getRequestURI.substring(context.length)
 
-    if(path.startsWith("/console/")){
-      val account = httpRequest.getSession.getAttribute(Keys.Session.LoginAccount).asInstanceOf[Account]
-      val baseUrl = this.baseUrl(httpRequest)
-      if(account == null){
-        // Redirect to login form
-        httpResponse.sendRedirect(baseUrl + "/signin?redirect=" + StringUtil.urlEncode(path))
-      } else if(account.isAdmin){
-        // H2 Console (administrators only)
-        chain.doFilter(request, response)
-      } else {
-        // Redirect to dashboard
-        httpResponse.sendRedirect(baseUrl + "/")
-      }
-    } else if(path.startsWith("/git/") || path.startsWith("/git-lfs/")){
+    if(path.startsWith("/git/") || path.startsWith("/git-lfs/")){
       // Git repository
       chain.doFilter(request, response)
     } else {
@@ -127,12 +114,24 @@ abstract class ControllerBase extends ScalatraFilter
       org.scalatra.NotFound(gitbucket.core.html.error("Not Found"))
     }
 
+  private def isBrowser(userAgent: String): Boolean = {
+    if(userAgent == null || userAgent.isEmpty){
+      false
+    } else {
+      val data = Classifier.parse(userAgent)
+      val category = data.get("category")
+      category == "pc" || category == "smartphone" || category == "mobilephone"
+    }
+  }
+
   protected def Unauthorized()(implicit context: Context) =
     if(request.hasAttribute(Keys.Request.Ajax)){
       org.scalatra.Unauthorized()
     } else if(request.hasAttribute(Keys.Request.APIv3)){
       contentType = formats("json")
       org.scalatra.Unauthorized(ApiError("Requires authentication"))
+    } else if(!isBrowser(request.getHeader("USER-AGENT"))){
+      org.scalatra.Unauthorized()
     } else {
       if(context.loginAccount.isDefined){
         org.scalatra.Unauthorized(redirect("/"))

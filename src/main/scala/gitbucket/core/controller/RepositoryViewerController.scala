@@ -168,9 +168,10 @@ trait RepositoryViewerControllerBase extends ControllerBase {
     val owner = params("owner")
     val repository = params("repository")
     contentType = formats("json")
+    val creating = RepositoryCreationService.isCreating(owner, repository)
     Serialization.write(Map(
-      "creating" -> RepositoryCreationService.isCreating(owner, repository),
-      "error" -> RepositoryCreationService.getCreationError(owner, repository)
+      "creating" -> creating,
+      "error" -> (if(creating) None else RepositoryCreationService.getCreationError(owner, repository))
     ))
   }
 
@@ -400,13 +401,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
   })
 
   private def isLfsFile(git: Git, objectId: ObjectId): Boolean = {
-    JGitUtil.getObjectLoaderFromId(git, objectId){ loader =>
-      if(loader.isLarge){
-        false
-      } else {
-        new String(loader.getCachedBytes, "UTF-8").startsWith("version https://git-lfs.github.com/spec/v1")
-      }
-    }.getOrElse(false)
+    JGitUtil.getObjectLoaderFromId(git, objectId)(JGitUtil.isLfsPointer).getOrElse(false)
   }
 
   get("/:owner/:repository/blame/*"){
@@ -633,8 +628,8 @@ trait RepositoryViewerControllerBase extends ControllerBase {
   /**
    * Displays tags.
    */
-  get("/:owner/:repository/tags")(referrersOnly {
-    html.tags(_)
+  get("/:owner/:repository/tags")(referrersOnly { repository =>
+    redirect(s"${repository.owner}/${repository.name}/releases")
   })
 
   /**
@@ -847,7 +842,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
           defining(JGitUtil.getRevCommitFromId(git, objectId)) { revCommit =>
             val lastModifiedCommit = if(path == ".") revCommit else JGitUtil.getLastModifiedCommit(git, revCommit, path)
             // get files
-            val files = JGitUtil.getFileList(git, revision, path)
+            val files = JGitUtil.getFileList(git, revision, path, context.settings.baseUrl)
             val parentPath = if (path == ".") Nil else path.split("/").toList
             // process README.md or README.markdown
             val readme = files.find { file =>

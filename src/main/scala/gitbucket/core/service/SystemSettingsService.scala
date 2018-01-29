@@ -1,11 +1,14 @@
 package gitbucket.core.service
 
-import gitbucket.core.util.Implicits._
+import javax.servlet.http.HttpServletRequest
+
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.oauth2.sdk.auth.Secret
+import com.nimbusds.oauth2.sdk.id.{ClientID, Issuer}
+import gitbucket.core.service.SystemSettingsService._
 import gitbucket.core.util.ConfigUtil._
 import gitbucket.core.util.Directory._
 import gitbucket.core.util.SyntaxSugars._
-import SystemSettingsService._
-import javax.servlet.http.HttpServletRequest
 
 trait SystemSettingsService {
 
@@ -52,6 +55,15 @@ trait SystemSettingsService {
           ldap.tls.foreach(x => props.setProperty(LdapTls, x.toString))
           ldap.ssl.foreach(x => props.setProperty(LdapSsl, x.toString))
           ldap.keystore.foreach(x => props.setProperty(LdapKeystore, x))
+        }
+      }
+      props.setProperty(OidcAuthentication, settings.oidcAuthentication.toString)
+      if (settings.oidcAuthentication) {
+        settings.oidc.map { oidc =>
+          props.setProperty(OidcIssuer, oidc.issuer.getValue)
+          props.setProperty(OidcClientId, oidc.clientID.getValue)
+          props.setProperty(OidcClientSecret, oidc.clientSecret.getValue)
+          oidc.jwsAlgorithm.map { x => props.setProperty(OidcJwsAlgorithm, x.getName) }
         }
       }
       props.setProperty(SsoAuthentication, settings.ssoAuthentication.toString)
@@ -120,11 +132,23 @@ trait SystemSettingsService {
         } else {
           None
         },
+        getValue(props, OidcAuthentication, false),
+        if (getValue(props, OidcAuthentication, false)) {
+          Some(OIDC(
+            getValue(props, OidcIssuer, ""),
+            getValue(props, OidcClientId, ""),
+            getValue(props, OidcClientSecret, ""),
+            getOptionValue(props, OidcJwsAlgorithm, None)
+          ))
+        } else {
+          None
+        },
         getValue(props, SsoAuthentication, false),
-        if(getValue(props, SsoAuthentication, false)){
+        if(getValue(props, SsoAuthentication, false)) {
           Some(Sso(
             getValue(props, SsoHttpSsoHeader, ""),
-            getOptionValue[Boolean](props, SsoLogout, None)))
+            getOptionValue[Boolean](props, SsoLogout, None)
+          ))
         } else {
           None
         },
@@ -154,6 +178,8 @@ object SystemSettingsService {
     smtp: Option[Smtp],
     ldapAuthentication: Boolean,
     ldap: Option[Ldap],
+    oidcAuthentication: Boolean,
+    oidc: Option[OIDC],
     ssoAuthentication: Boolean,
     sso: Option[Sso],
     skinName: String){
@@ -182,6 +208,16 @@ object SystemSettingsService {
     tls: Option[Boolean],
     ssl: Option[Boolean],
     keystore: Option[String])
+
+  case class OIDC(
+    issuer: Issuer,
+    clientID: ClientID,
+    clientSecret: Secret,
+    jwsAlgorithm: Option[JWSAlgorithm])
+  object OIDC {
+    def apply(issuer: String, clientID: String, clientSecret: String, jwsAlgorithm: Option[String]): OIDC =
+      new OIDC(new Issuer(issuer), new ClientID(clientID), new Secret(clientSecret), jwsAlgorithm.map(JWSAlgorithm.parse))
+  }
 
   case class Sso(
     httpSsoHeader: String,
@@ -242,6 +278,11 @@ object SystemSettingsService {
   private val LdapTls = "ldap.tls"
   private val LdapSsl = "ldap.ssl"
   private val LdapKeystore = "ldap.keystore"
+  private val OidcAuthentication = "oidc_authentication"
+  private val OidcIssuer = "oidc.issuer"
+  private val OidcClientId = "oidc.client_id"
+  private val OidcClientSecret = "oidc.client_secret"
+  private val OidcJwsAlgorithm = "oidc.jws_algorithm"
   private val SsoAuthentication = "sso_authentication"
   private val SsoHttpSsoHeader = "sso.http_sso_header"
   private val SsoLogout = "sso.logout"
