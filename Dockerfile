@@ -13,4 +13,4 @@ EXPOSE 8080
 # Port for SSH access to git repository (Optional)
 EXPOSE 29418
 
-CMD ["java", "-jar", "/opt/gitbucket.war"]
+CMD ["java", "-jar", "/opt/gitbucket.war", "--max_file_size=104857600"]
