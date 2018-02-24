@@ -7,11 +7,11 @@
         <div id="table-tree">
           <ul>
           @tables.map { table =>
-            <li data-jstree='{"icon":"@context.path/assets/common/images/table.gif"}'><a href="javascript:void(0);" class="table-link">@table.name</a>
+            <li data-jstree='{"icon":"@context.path/assets/common/images/table.gif"}' data-table="@table.name">@table.name
               <ul>
               @table.columns.map { column =>
-                <li data-jstree='{"icon":"@context.path/assets/common/images/column.gif"}'>@column.name
-                  @if(column.primaryKey){ (PK) }
+                <li data-jstree='{"icon":"@context.path/assets/common/images/column.gif"}' data-table="@table.name" data-column="@column.name">
+                  @column.name @if(column.primaryKey){ (PK) }
                 </li>
               }
               </ul>
@@ -25,6 +25,10 @@
         <div class="block">
           <input type="button" value="Run query" id="run-query" class="btn btn-success">
           <input type="button" value="Clear" id="clear-query" class="btn btn-default">
+			<label for="autorun">
+				<input type="checkbox" id="autorun" name="autorun"/>
+				Auto Run Query
+			</label>
         </div>
         <div id="result"></div>
       </div>
@@ -43,11 +47,23 @@ $(function(){
 
   $('#table-tree').jstree();
 
-  $('.table-link').click(function(e){
-    if(editor.getValue().trim() == ''){
-      editor.getSession().insert(editor.getCursorPosition(), 'SELECT * FROM ' + $(e.target).text());
+	$('#table-tree').on('select_node.jstree', function(e, data){
+	  //var selectedNodes = $('#table-tree').jstree('get_selected', true);
+    if(editor.getValue().trim() == '' || $('#autorun').is(':checked')){
+      if(data.node.data['column']){
+        editor.setValue('SELECT `' + data.node.data['column'] + '` FROM `' + data.node.data['table'] + '`');
+      } else if(data.node.data['table']){
+        editor.setValue('SELECT * FROM `' + data.node.data['table']+ '`');
+      }
+      if($('#autorun').is(':checked')){
+        $('#run-query').click();
+      }
     } else {
-      editor.getSession().insert(editor.getCursorPosition(), $(e.target).text());
+      if(data.node.data['column']){
+        editor.getSession().insert(editor.getCursorPosition(), data.node.data['column']);
+      } else if(data.node.data['table']){
+        editor.getSession().insert(editor.getCursorPosition(), data.node.data['table']);
+      }
     }
     editor.focus();
   });
