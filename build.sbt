@@ -3,7 +3,7 @@ import com.typesafe.sbt.pgp.PgpKeys._
 
 val Organization = "io.github.gitbucket"
 val Name = "gitbucket"
-val GitBucketVersion = "4.21.2"
+val GitBucketVersion = "4.22.0"
 val ScalatraVersion = "2.6.1"
 val JettyVersion = "9.4.7.v20170914"
 
@@ -43,7 +43,7 @@ libraryDependencies ++= Seq(
   "com.github.takezoe"              %% "blocking-slick-32"            % "0.0.10",
   "com.novell.ldap"                 %  "jldap"                        % "2009-10-07",
   "com.h2database"                  %  "h2"                           % "1.4.196",
-  "org.mariadb.jdbc"                %  "mariadb-java-client"          % "2.2.1",
+  "org.mariadb.jdbc"                %  "mariadb-java-client"          % "2.2.2",
   "org.postgresql"                  %  "postgresql"                   % "42.1.4",
   "ch.qos.logback"                  %  "logback-classic"              % "1.2.3",
   "com.zaxxer"                      %  "HikariCP"                     % "2.7.4",
