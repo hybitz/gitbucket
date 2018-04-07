@@ -10,6 +10,7 @@ import gitbucket.core.util.Implicits._
 import gitbucket.core.util.JGitUtil._
 import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.util._
+import gitbucket.core.plugin.PluginRegistry
 import gitbucket.core.view.helpers.{isRenderable, renderMarkup}
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.revwalk.RevWalk
@@ -76,7 +77,7 @@ trait ApiControllerBase extends ControllerBase {
   /**
     * https://developer.github.com/v3/#root-endpoint
     */
-  get("/api/v3/") {
+  get("/api/v3") {
     JsonFormat(ApiEndPoint())
   }
 
@@ -352,7 +353,8 @@ trait ApiControllerBase extends ControllerBase {
       ApiIssue(
         issue          = issue,
         repositoryName = RepositoryName(repository),
-        user           = ApiUser(issueUser)
+        user           = ApiUser(issueUser),
+        labels         = getIssueLabels(repository.owner, repository.name, issue.issueId).map(ApiLabel(_, RepositoryName(repository)))
       )
     })
   })
@@ -366,7 +368,8 @@ trait ApiControllerBase extends ControllerBase {
       issue <- getIssue(repository.owner, repository.name, issueId.toString)
       openedUser <- getAccountByUserName(issue.openedUserName)
     } yield {
-      JsonFormat(ApiIssue(issue, RepositoryName(repository), ApiUser(openedUser)))
+      JsonFormat(ApiIssue(issue, RepositoryName(repository), ApiUser(openedUser),
+        getIssueLabels(repository.owner, repository.name, issue.issueId).map(ApiLabel(_, RepositoryName(repository)))))
     }) getOrElse NotFound()
   })
 
@@ -389,7 +392,8 @@ trait ApiControllerBase extends ControllerBase {
           None,
           data.labels,
           loginAccount)
-        JsonFormat(ApiIssue(issue, RepositoryName(repository), ApiUser(loginAccount)))
+        JsonFormat(ApiIssue(issue, RepositoryName(repository), ApiUser(loginAccount),
+          getIssueLabels(repository.owner, repository.name, issue.issueId).map(ApiLabel(_, RepositoryName(repository)))))
       }) getOrElse NotFound()
     } else Unauthorized()
   })
@@ -532,6 +536,7 @@ trait ApiControllerBase extends ControllerBase {
         headRepo      = ApiRepository(headRepo, ApiUser(headOwner)),
         baseRepo      = ApiRepository(repository, ApiUser(baseOwner)),
         user          = ApiUser(issueUser),
+        labels        = getIssueLabels(repository.owner, repository.name, issue.issueId).map(ApiLabel(_, RepositoryName(repository))),
         assignee      = assignee.map(ApiUser.apply),
         mergedComment = getMergedComment(repository.owner, repository.name, issue.issueId)
       )
@@ -558,6 +563,7 @@ trait ApiControllerBase extends ControllerBase {
         headRepo      = ApiRepository(headRepo, ApiUser(headOwner)),
         baseRepo      = ApiRepository(repository, ApiUser(baseOwner)),
         user          = ApiUser(issueUser),
+        labels        = getIssueLabels(repository.owner, repository.name, issue.issueId).map(ApiLabel(_, RepositoryName(repository))),
         assignee      = assignee.map(ApiUser.apply),
         mergedComment = getMergedComment(repository.owner, repository.name, issue.issueId)
       ))
@@ -712,5 +718,11 @@ trait ApiControllerBase extends ControllerBase {
     }
   })
 
+  /**
+    * non-GitHub compatible API for listing plugins
+    */
+  get("/api/v3/gitbucket/plugins"){
+    PluginRegistry().getPlugins().map{ApiPlugin(_)}
+  }
 }
 
