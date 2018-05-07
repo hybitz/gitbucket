@@ -1,7 +1,6 @@
 package gitbucket.core.service
 
 import javax.servlet.http.HttpServletRequest
-
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.oauth2.sdk.auth.Secret
 import com.nimbusds.oauth2.sdk.id.{ClientID, Issuer}
@@ -15,7 +14,7 @@ trait SystemSettingsService {
   def baseUrl(implicit request: HttpServletRequest): String = loadSystemSettings().baseUrl(request)
 
   def saveSystemSettings(settings: SystemSettings): Unit = {
-    defining(new java.util.Properties()){ props =>
+    defining(new java.util.Properties()) { props =>
       settings.baseUrl.foreach(x => props.setProperty(BaseURL, x.replaceFirst("/\\Z", "")))
       settings.information.foreach(x => props.setProperty(Information, x))
       props.setProperty(AllowAccountRegistration, settings.allowAccountRegistration.toString)
@@ -28,7 +27,7 @@ trait SystemSettingsService {
       settings.sshHost.foreach(x => props.setProperty(SshHost, x.trim))
       settings.sshPort.foreach(x => props.setProperty(SshPort, x.toString))
       props.setProperty(UseSMTP, settings.useSMTP.toString)
-      if(settings.useSMTP) {
+      if (settings.useSMTP) {
         settings.smtp.foreach { smtp =>
           props.setProperty(SmtpHost, smtp.host)
           smtp.port.foreach(x => props.setProperty(SmtpPort, x.toString))
@@ -41,7 +40,7 @@ trait SystemSettingsService {
         }
       }
       props.setProperty(LdapAuthentication, settings.ldapAuthentication.toString)
-      if(settings.ldapAuthentication){
+      if (settings.ldapAuthentication) {
         settings.ldap.map { ldap =>
           props.setProperty(LdapHost, ldap.host)
           ldap.port.foreach(x => props.setProperty(LdapPort, x.toString))
@@ -63,28 +62,29 @@ trait SystemSettingsService {
           props.setProperty(OidcIssuer, oidc.issuer.getValue)
           props.setProperty(OidcClientId, oidc.clientID.getValue)
           props.setProperty(OidcClientSecret, oidc.clientSecret.getValue)
-          oidc.jwsAlgorithm.map { x => props.setProperty(OidcJwsAlgorithm, x.getName) }
+          oidc.jwsAlgorithm.map { x =>
+            props.setProperty(OidcJwsAlgorithm, x.getName)
+          }
         }
       }
       props.setProperty(SsoAuthentication, settings.ssoAuthentication.toString)
-      if(settings.ssoAuthentication){
+      if (settings.ssoAuthentication) {
         settings.sso.map { sso =>
           props.setProperty(SsoHttpSsoHeader, sso.httpSsoHeader)
           sso.logout.foreach(x => props.setProperty(SsoLogout, x.toString))
         }
       }
       props.setProperty(SkinName, settings.skinName.toString)
-      using(new java.io.FileOutputStream(GitBucketConf)){ out =>
+      using(new java.io.FileOutputStream(GitBucketConf)) { out =>
         props.store(out, null)
       }
     }
   }
 
-
   def loadSystemSettings(): SystemSettings = {
-    defining(new java.util.Properties()){ props =>
-      if(GitBucketConf.exists){
-        using(new java.io.FileInputStream(GitBucketConf)){ in =>
+    defining(new java.util.Properties()) { props =>
+      if (GitBucketConf.exists) {
+        using(new java.io.FileInputStream(GitBucketConf)) { in =>
           props.load(in)
         }
       }
@@ -100,55 +100,65 @@ trait SystemSettingsService {
         getValue(props, Ssh, false),
         getOptionValue[String](props, SshHost, None).map(_.trim),
         getOptionValue(props, SshPort, Some(DefaultSshPort)),
-        getValue(props, UseSMTP, getValue(props, Notification, false)),   // handle migration scenario from only notification to useSMTP
-        if(getValue(props, UseSMTP, getValue(props, Notification, false))){
-          Some(Smtp(
-            getValue(props, SmtpHost, ""),
-            getOptionValue(props, SmtpPort, Some(DefaultSmtpPort)),
-            getOptionValue(props, SmtpUser, None),
-            getOptionValue(props, SmtpPassword, None),
-            getOptionValue[Boolean](props, SmtpSsl, None),
-            getOptionValue[Boolean](props, SmtpStarttls, None),
-            getOptionValue(props, SmtpFromAddress, None),
-            getOptionValue(props, SmtpFromName, None)))
+        getValue(props, UseSMTP, getValue(props, Notification, false)), // handle migration scenario from only notification to useSMTP
+        if (getValue(props, UseSMTP, getValue(props, Notification, false))) {
+          Some(
+            Smtp(
+              getValue(props, SmtpHost, ""),
+              getOptionValue(props, SmtpPort, Some(DefaultSmtpPort)),
+              getOptionValue(props, SmtpUser, None),
+              getOptionValue(props, SmtpPassword, None),
+              getOptionValue[Boolean](props, SmtpSsl, None),
+              getOptionValue[Boolean](props, SmtpStarttls, None),
+              getOptionValue(props, SmtpFromAddress, None),
+              getOptionValue(props, SmtpFromName, None)
+            )
+          )
         } else {
           None
         },
         getValue(props, LdapAuthentication, false),
-        if(getValue(props, LdapAuthentication, false)){
-          Some(Ldap(
-            getValue(props, LdapHost, ""),
-            getOptionValue(props, LdapPort, Some(DefaultLdapPort)),
-            getOptionValue(props, LdapBindDN, None),
-            getOptionValue(props, LdapBindPassword, None),
-            getValue(props, LdapBaseDN, ""),
-            getValue(props, LdapUserNameAttribute, ""),
-            getOptionValue(props, LdapAdditionalFilterCondition, None),
-            getOptionValue(props, LdapFullNameAttribute, None),
-            getOptionValue(props, LdapMailAddressAttribute, None),
-            getOptionValue[Boolean](props, LdapTls, None),
-            getOptionValue[Boolean](props, LdapSsl, None),
-            getOptionValue(props, LdapKeystore, None)))
+        if (getValue(props, LdapAuthentication, false)) {
+          Some(
+            Ldap(
+              getValue(props, LdapHost, ""),
+              getOptionValue(props, LdapPort, Some(DefaultLdapPort)),
+              getOptionValue(props, LdapBindDN, None),
+              getOptionValue(props, LdapBindPassword, None),
+              getValue(props, LdapBaseDN, ""),
+              getValue(props, LdapUserNameAttribute, ""),
+              getOptionValue(props, LdapAdditionalFilterCondition, None),
+              getOptionValue(props, LdapFullNameAttribute, None),
+              getOptionValue(props, LdapMailAddressAttribute, None),
+              getOptionValue[Boolean](props, LdapTls, None),
+              getOptionValue[Boolean](props, LdapSsl, None),
+              getOptionValue(props, LdapKeystore, None)
+            )
+          )
         } else {
           None
         },
         getValue(props, OidcAuthentication, false),
         if (getValue(props, OidcAuthentication, false)) {
-          Some(OIDC(
-            getValue(props, OidcIssuer, ""),
-            getValue(props, OidcClientId, ""),
-            getValue(props, OidcClientSecret, ""),
-            getOptionValue(props, OidcJwsAlgorithm, None)
-          ))
+          Some(
+            OIDC(
+              getValue(props, OidcIssuer, ""),
+              getValue(props, OidcClientId, ""),
+              getValue(props, OidcClientSecret, ""),
+              getOptionValue(props, OidcJwsAlgorithm, None)
+            )
+          )
         } else {
           None
         },
         getValue(props, SsoAuthentication, false),
-        if(getValue(props, SsoAuthentication, false)) {
-          Some(Sso(
-            getValue(props, SsoHttpSsoHeader, ""),
-            getOptionValue[Boolean](props, SsoLogout, None)
-          ))
+        if (getValue(props, SsoAuthentication, false)) {
+          Some(
+            Sso(
+              getValue(props, SsoHttpSsoHeader, ""),
+              getOptionValue[Boolean](props, SsoLogout, None)
+            )
+          )
         } else {
           None
         },
@@ -161,6 +171,8 @@ trait SystemSettingsService {
 
 object SystemSettingsService {
   import scala.reflect.ClassTag
+
+  private val HttpProtocols = Vector("http", "https")
 
   case class SystemSettings(
     baseUrl: Option[String],
@@ -182,16 +194,28 @@ object SystemSettingsService {
     oidc: Option[OIDC],
     ssoAuthentication: Boolean,
     sso: Option[Sso],
-    skinName: String){
+    skinName: String
+  ) {
 
-    def baseUrl(request: HttpServletRequest): String = baseUrl.fold {
-      val url = request.getRequestURL.toString
-      val len = url.length - (request.getRequestURI.length - request.getContextPath.length)
-      url.substring(0, len).stripSuffix("/")
-    } (_.stripSuffix("/"))
+    def baseUrl(request: HttpServletRequest): String =
+      baseUrl.getOrElse(parseBaseUrl(request)).stripSuffix("/")
 
-    def sshAddress:Option[SshAddress] = sshHost.collect { case host if ssh =>
-      SshAddress(host, sshPort.getOrElse(DefaultSshPort), "git")
+    def parseBaseUrl(req: HttpServletRequest): String = {
+      val url = req.getRequestURL.toString
+      val path = req.getRequestURI
+      val contextPath = req.getContextPath
+      val len = url.length - path.length + contextPath.length
+
+      val base = url.substring(0, len).stripSuffix("/")
+      Option(req.getHeader("X-Forwarded-Proto"))
+        .map(_.toLowerCase())
+        .filter(HttpProtocols.contains)
+        .fold(base)(_ + base.dropWhile(_ != ':'))
+    }
+
+    def sshAddress: Option[SshAddress] = sshHost.collect {
+      case host if ssh =>
+        SshAddress(host, sshPort.getOrElse(DefaultSshPort), "git")
     }
   }
 
@@ -207,21 +231,21 @@ object SystemSettingsService {
     mailAttribute: Option[String],
     tls: Option[Boolean],
     ssl: Option[Boolean],
-    keystore: Option[String])
+    keystore: Option[String]
+  )
 
-  case class OIDC(
-    issuer: Issuer,
-    clientID: ClientID,
-    clientSecret: Secret,
-    jwsAlgorithm: Option[JWSAlgorithm])
+  case class OIDC(issuer: Issuer, clientID: ClientID, clientSecret: Secret, jwsAlgorithm: Option[JWSAlgorithm])
   object OIDC {
     def apply(issuer: String, clientID: String, clientSecret: String, jwsAlgorithm: Option[String]): OIDC =
-      new OIDC(new Issuer(issuer), new ClientID(clientID), new Secret(clientSecret), jwsAlgorithm.map(JWSAlgorithm.parse))
+      new OIDC(
+        new Issuer(issuer),
+        new ClientID(clientID),
+        new Secret(clientSecret),
+        jwsAlgorithm.map(JWSAlgorithm.parse)
+      )
   }
 
-  case class Sso(
-    httpSsoHeader: String,
-    logout: Option[Boolean])
+  case class Sso(httpSsoHeader: String, logout: Option[Boolean])
 
   case class Smtp(
     host: String,
@@ -231,15 +255,12 @@ object SystemSettingsService {
     ssl: Option[Boolean],
     starttls: Option[Boolean],
     fromAddress: Option[String],
-    fromName: Option[String])
+    fromName: Option[String]
+  )
 
-  case class SshAddress(
-    host: String,
-    port: Int,
-    genericUser: String)
+  case class SshAddress(host: String, port: Int, genericUser: String)
 
-  case class Lfs(
-    serverUrl: Option[String])
+  case class Lfs(serverUrl: Option[String])
 
   val DefaultSshPort = 29418
   val DefaultSmtpPort = 25
@@ -290,8 +311,8 @@ object SystemSettingsService {
 
   private def getValue[A: ClassTag](props: java.util.Properties, key: String, default: A): A = {
     getSystemProperty(key).getOrElse(getEnvironmentVariable(key).getOrElse {
-      defining(props.getProperty(key)){ value =>
-        if(value == null || value.isEmpty){
+      defining(props.getProperty(key)) { value =>
+        if (value == null || value.isEmpty) {
           default
         } else {
           convertType(value).asInstanceOf[A]
@@ -302,8 +323,8 @@ object SystemSettingsService {
 
   private def getOptionValue[A: ClassTag](props: java.util.Properties, key: String, default: Option[A]): Option[A] = {
     getSystemProperty(key).orElse(getEnvironmentVariable(key).orElse {
-      defining(props.getProperty(key)){ value =>
-        if(value == null || value.isEmpty){
+      defining(props.getProperty(key)) { value =>
+        if (value == null || value.isEmpty) {
           default
         } else {
           Some(convertType(value)).asInstanceOf[Option[A]]

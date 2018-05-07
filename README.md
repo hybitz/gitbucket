@@ -1,4 +1,4 @@
-GitBucket [![Gitter chat](https://badges.gitter.im/gitbucket/gitbucket.png)](https://gitter.im/gitbucket/gitbucket) [![Build Status](https://travis-ci.org/gitbucket/gitbucket.svg?branch=master)](https://travis-ci.org/gitbucket/gitbucket)
+GitBucket [![Gitter chat](https://badges.gitter.im/gitbucket/gitbucket.svg)](https://gitter.im/gitbucket/gitbucket) [![Build Status](https://travis-ci.org/gitbucket/gitbucket.svg?branch=master)](https://travis-ci.org/gitbucket/gitbucket) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.gitbucket/gitbucket_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.gitbucket/gitbucket_2.12)
 =========
 
 GitBucket is a Git web platform powered by Scala offering:
@@ -68,14 +68,14 @@ Support
 - If you can't find same question and report, send it to [gitter room](https://gitter.im/gitbucket/gitbucket) before raising an issue.
 - The highest priority of GitBucket is the ease of installation and API compatibility with GitHub, so your feature request might be rejected if they go against those principles.
 
-What's New in 4.23.x
+What's New in 4.24.x
 -------------
-### 4.23.0 - 31 Mar 2018
-- Allow tail slash in URL
-- Display commit message of tags at the releases page
-- Add labels property to issues and pull requests API response
-- Plugins list API
-- Git authentication with personal access token
-- Max parallel builds and max stored history in CI plugin became configurable
+### 4.24.0 - 30 Apr 2018
+- Diff for each review comment on pull requests
+- Extra mail addresses support
+- Show tags at the commit list
+- Keep wrap mode of the online editor
+- Renew layout of gitbucket-gist-plugin
+- Web API of gitbucket-ci-plugin
 
 See the [change log](CHANGELOG.md) for all of the updates.

@@ -1,6 +1,7 @@
 package gitbucket.core.model
+import java.util.Date
 
-trait Comment {
+sealed trait Comment {
   val commentedUserName: String
   val registeredDate: java.util.Date
 }
@@ -18,13 +19,14 @@ trait IssueCommentComponent extends TemplateComponent { self: Profile =>
     val content = column[String]("CONTENT")
     val registeredDate = column[java.util.Date]("REGISTERED_DATE")
     val updatedDate = column[java.util.Date]("UPDATED_DATE")
-    def * = (userName, repositoryName, issueId, commentId, action, commentedUserName, content, registeredDate, updatedDate) <> (IssueComment.tupled, IssueComment.unapply)
+    def * =
+      (userName, repositoryName, issueId, commentId, action, commentedUserName, content, registeredDate, updatedDate) <> (IssueComment.tupled, IssueComment.unapply)
 
     def byPrimaryKey(commentId: Int) = this.commentId === commentId.bind
   }
 }
 
-case class IssueComment (
+case class IssueComment(
   userName: String,
   repositoryName: String,
   issueId: Int,
@@ -52,7 +54,21 @@ trait CommitCommentComponent extends TemplateComponent { self: Profile =>
     val registeredDate = column[java.util.Date]("REGISTERED_DATE")
     val updatedDate = column[java.util.Date]("UPDATED_DATE")
     val issueId = column[Option[Int]]("ISSUE_ID")
-    def * = (userName, repositoryName, commitId, commentId, commentedUserName, content, fileName, oldLine, newLine, registeredDate, updatedDate, issueId) <> (CommitComment.tupled, CommitComment.unapply)
+    def * =
+      (
+        userName,
+        repositoryName,
+        commitId,
+        commentId,
+        commentedUserName,
+        content,
+        fileName,
+        oldLine,
+        newLine,
+        registeredDate,
+        updatedDate,
+        issueId
+      ) <> (CommitComment.tupled, CommitComment.unapply)
 
     def byPrimaryKey(commentId: Int) = this.commentId === commentId.bind
   }
@@ -71,4 +87,12 @@ case class CommitComment(
   registeredDate: java.util.Date,
   updatedDate: java.util.Date,
   issueId: Option[Int]
- ) extends Comment
+) extends Comment
+
+case class CommitComments(
+  fileName: String,
+  commentedUserName: String,
+  registeredDate: Date,
+  comments: Seq[CommitComment],
+  diff: Option[String]
+) extends Comment

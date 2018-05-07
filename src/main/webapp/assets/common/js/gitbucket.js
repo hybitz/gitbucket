@@ -78,9 +78,9 @@ function displayErrors(data, elem){
 function diffUsingJS(oldTextId, newTextId, outputId, viewType, ignoreSpace) {
   var old = $('#'+oldTextId), head = $('#'+newTextId);
   var render = new JsDiffRender({
-    oldText: old.val(),
+    oldText: old.data('val'),
     oldTextName: old.data('file-name'),
-    newText: head.val(),
+    newText: head.data('val'),
     newTextName: head.data('file-name'),
     ignoreSpace: ignoreSpace,
     contextSize: 4
@@ -116,7 +116,7 @@ function JsDiffRender(params){
     return function(ln){
       if(dom===null){
         var html = prettyPrintOne(
-          text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/>/g,'&gt;'),
+          text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/>/g,'&gt;').replace(/^\n/, '\n\n'),
           (/\.([^.]*)$/.exec(fileName)||[])[1],
           true);
         var re = /<li[^>]*id="?L([0-9]+)"?[^>]*>(.*?)<\/li>/gi, h;
@@ -694,3 +694,35 @@ var imageDiff ={
   }
 };
 
+/**
+ * function for account extra mail address form control.
+ */
+function addExtraMailAddress() {
+  var fieldset = $('#extraMailAddresses');
+  var count = $('.extraMailAddress').length;
+  var html =   '<input type="text" name="extraMailAddresses[' + count + ']" id="extraMailAddresses[' + count + ']" class="form-control extraMailAddress"/>'
+  + '<span id="error-extraMailAddresses_' + count + '" class="error"></span>';
+  fieldset.append(html);
+}
+
+/**
+ * function for check account extra mail address form control.
+ */
+function checkExtraMailAddress(){
+  if ($(this).val() != ""){
+    var needAdd = true;
+    $('.extraMailAddress').each(function(){
+      if($(this).val() == ""){
+        needAdd = false;
+        return false;
+      }
+      return true;
+    });
+    if (needAdd){
+      addExtraMailAddress();
+    }
+  }
+  else {
+    $(this).remove();
+  }
+}

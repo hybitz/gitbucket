@@ -9,7 +9,7 @@ import scala.util.Random
 object FileUtil {
 
   def getMimeType(name: String): String =
-    defining(new Tika()){ tika =>
+    defining(new Tika()) { tika =>
       tika.detect(name) match {
         case null     => "application/octet-stream"
         case mimeType => mimeType
@@ -17,8 +17,8 @@ object FileUtil {
     }
 
   def getContentType(name: String, bytes: Array[Byte]): String = {
-    defining(getMimeType(name)){ mimeType =>
-      if(mimeType == "application/octet-stream" && isText(bytes)){
+    defining(getMimeType(name)) { mimeType =>
+      if (mimeType == "application/octet-stream" && isText(bytes)) {
         "text/plain"
       } else {
         mimeType
@@ -36,12 +36,12 @@ object FileUtil {
 
   def getExtension(name: String): String =
     name.lastIndexOf('.') match {
-      case i if(i >= 0) => name.substring(i + 1)
-      case _ => ""
+      case i if (i >= 0) => name.substring(i + 1)
+      case _             => ""
     }
 
   def withTmpDir[A](dir: File)(action: File => A): A = {
-    if(dir.exists()){
+    if (dir.exists()) {
       FileUtils.deleteDirectory(dir)
     }
     try {
@@ -52,7 +52,7 @@ object FileUtil {
   }
 
   def getLfsFilePath(owner: String, repository: String, oid: String): String =
-    Directory.getLfsDir(owner, repository) + "/" + oid
+    Directory.getLfsDir(owner, repository) + "/" + checkFilename(oid)
 
   def readableSize(size: Long): String = FileUtils.byteCountToDisplaySize(size)
 
@@ -61,7 +61,7 @@ object FileUtil {
    * Do nothing if the given File is not a directory or not empty.
    */
   def deleteDirectoryIfEmpty(dir: File): Unit = {
-    if(dir.isDirectory() && dir.list().isEmpty) {
+    if (dir.isDirectory() && dir.list().isEmpty) {
       FileUtils.deleteDirectory(dir)
     }
   }
@@ -70,15 +70,26 @@ object FileUtil {
    * Delete file or directory forcibly.
    */
   def deleteIfExists(file: java.io.File): java.io.File = {
-    if(file.exists){
+    if (file.exists) {
       FileUtils.forceDelete(file)
     }
     file
   }
 
-  lazy val MaxFileSize = if (System.getProperty("gitbucket.maxFileSize") != null)
-    System.getProperty("gitbucket.maxFileSize").toLong
-  else
-    3 * 1024 * 1024
+  /**
+   * Create an instance of java.io.File safely.
+   */
+  def checkFilename(name: String): String = {
+    if (name.contains("..")) {
+      throw new IllegalArgumentException(s"Invalid file name: ${name}")
+    }
+    name
+  }
+
+  lazy val MaxFileSize =
+    if (System.getProperty("gitbucket.maxFileSize") != null)
+      System.getProperty("gitbucket.maxFileSize").toLong
+    else
+      3 * 1024 * 1024
 
 }
