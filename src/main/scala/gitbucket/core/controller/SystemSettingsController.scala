@@ -98,7 +98,7 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
         "logout" -> trim(label("Show Logout Link", optional(boolean())))
       )(Sso.apply)
     ),
-    "skinName" -> trim(label("AdminLTE skin name", text(required)))
+    "skinName" -> trim(label("AdminLTE skin name", text(required))),
     "showMailAddress" -> trim(label("Show mail address", boolean()))
   )(SystemSettings.apply).verifying { settings =>
     Vector(

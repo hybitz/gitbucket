@@ -163,7 +163,7 @@ trait SystemSettingsService {
         } else {
           None
         },
-        getValue(props, SkinName, "skin-blue")
+        getValue(props, SkinName, "skin-blue"),
         getValue(props, ShowMailAddress, false)
       )
     }
@@ -196,7 +196,7 @@ object SystemSettingsService {
     oidc: Option[OIDC],
     ssoAuthentication: Boolean,
     sso: Option[Sso],
-    skinName: String
+    skinName: String,
     showMailAddress: Boolean
   ) {
 
@@ -248,7 +248,10 @@ object SystemSettingsService {
       )
   }
 
-  case class Sso(httpSsoHeader: String, logout: Option[Boolean])
+  case class Sso(
+    httpSsoHeader: String,
+    logout: Option[Boolean]
+  )
 
   case class Smtp(
     host: String,
