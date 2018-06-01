@@ -15,6 +15,7 @@ import gitbucket.core.util.StringUtil._
 import gitbucket.core.util.SyntaxSugars._
 import gitbucket.core.util.{AdminAuthenticator, Mailer}
 import org.apache.commons.io.IOUtils
+import org.apache.commons.mail.EmailException
 import org.json4s.jackson.Serialization
 import org.scalatra._
 import org.scalatra.forms._
@@ -98,6 +99,7 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
       )(Sso.apply)
     ),
     "skinName" -> trim(label("AdminLTE skin name", text(required)))
+    "showMailAddress" -> trim(label("Show mail address", boolean()))
   )(SystemSettings.apply).verifying { settings =>
     Vector(
       if (settings.ssh && settings.baseUrl.isEmpty) {
@@ -320,7 +322,8 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
       "Test mail has been sent to: " + form.testAddress
 
     } catch {
-      case e: Exception => "[Error] " + e.toString
+      case e: EmailException => s"[Error] ${e.getCause}"
+      case e: Exception      => "[Error] " + e.toString
     }
   })
 
@@ -422,7 +425,7 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
   post("/admin/users/_newuser", newUserForm)(adminOnly { form =>
     createAccount(
       form.userName,
-      sha1(form.password),
+      pbkdf2_sha256(form.password),
       form.fullName,
       form.mailAddress,
       form.isAdmin,
@@ -462,7 +465,7 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
 
           updateAccount(
             account.copy(
-              password = form.password.map(sha1).getOrElse(account.password),
+              password = form.password.map(pbkdf2_sha256).getOrElse(account.password),
               fullName = form.fullName,
               mailAddress = form.mailAddress,
               isAdmin = form.isAdmin,

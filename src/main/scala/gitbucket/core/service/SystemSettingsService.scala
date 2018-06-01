@@ -75,6 +75,7 @@ trait SystemSettingsService {
         }
       }
       props.setProperty(SkinName, settings.skinName.toString)
+      props.setProperty(ShowMailAddress, settings.showMailAddress.toString)
       using(new java.io.FileOutputStream(GitBucketConf)) { out =>
         props.store(out, null)
       }
@@ -163,6 +164,7 @@ trait SystemSettingsService {
           None
         },
         getValue(props, SkinName, "skin-blue")
+        getValue(props, ShowMailAddress, false)
       )
     }
   }
@@ -195,6 +197,7 @@ object SystemSettingsService {
     ssoAuthentication: Boolean,
     sso: Option[Sso],
     skinName: String
+    showMailAddress: Boolean
   ) {
 
     def baseUrl(request: HttpServletRequest): String =
@@ -308,6 +311,7 @@ object SystemSettingsService {
   private val SsoHttpSsoHeader = "sso.http_sso_header"
   private val SsoLogout = "sso.logout"
   private val SkinName = "skinName"
+  private val ShowMailAddress = "showMailAddress"
 
   private def getValue[A: ClassTag](props: java.util.Properties, key: String, default: A): A = {
     getSystemProperty(key).getOrElse(getEnvironmentVariable(key).getOrElse {

@@ -1,4 +1,4 @@
-GitBucket [![Gitter chat](https://badges.gitter.im/gitbucket/gitbucket.svg)](https://gitter.im/gitbucket/gitbucket) [![Build Status](https://travis-ci.org/gitbucket/gitbucket.svg?branch=master)](https://travis-ci.org/gitbucket/gitbucket) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.gitbucket/gitbucket_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.gitbucket/gitbucket_2.12)
+GitBucket [![Gitter chat](https://badges.gitter.im/gitbucket/gitbucket.svg)](https://gitter.im/gitbucket/gitbucket) [![Build Status](https://travis-ci.org/gitbucket/gitbucket.svg?branch=master)](https://travis-ci.org/gitbucket/gitbucket) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.gitbucket/gitbucket_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.gitbucket/gitbucket_2.12) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/gitbucket/gitbucket/blob/master/LICENSE)
 =========
 
 GitBucket is a Git web platform powered by Scala offering:
@@ -68,14 +68,14 @@ Support
 - If you can't find same question and report, send it to [gitter room](https://gitter.im/gitbucket/gitbucket) before raising an issue.
 - The highest priority of GitBucket is the ease of installation and API compatibility with GitHub, so your feature request might be rejected if they go against those principles.
 
-What's New in 4.24.x
+What's New in 4.25.x
 -------------
-### 4.24.0 - 30 Apr 2018
-- Diff for each review comment on pull requests
-- Extra mail addresses support
-- Show tags at the commit list
-- Keep wrap mode of the online editor
-- Renew layout of gitbucket-gist-plugin
-- Web API of gitbucket-ci-plugin
+### 4.25.0 - 29 May 2018
+- Security improvement
+- Show mail address at the profile page
+- Task list on commit comments
+- More detailed editing history of issues and pull requests
+- Expose user public keys
+- Download repository improvements
 
 See the [change log](CHANGELOG.md) for all of the updates.
