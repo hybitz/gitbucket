@@ -494,12 +494,13 @@ trait RepositoryService { self: AccountService =>
   /**
    * TODO It seems to be able to improve performance. For example, RequestCache can be used for getAccountByUserName call.
    */
-  private def getRepositoryManagers(userName: String, repositoryName: String)(implicit s: Session): Seq[String] =
-    if (getAccountByUserName(userName).exists(_.isGroupAccount)) {
-      getGroupMembers(userName).collect { case x if (x.isManager) => x.userName }
-    } else {
-      Seq(userName)
-    } ++ getCollaboratorUserNames(userName, repositoryName, Seq(Role.ADMIN))
+  private def getRepositoryManagers(userName: String, repositoryName: String)(implicit s: Session): Seq[String] = {
+    (if (getAccountByUserName(userName).exists(_.isGroupAccount)) {
+       getGroupMembers(userName).collect { case x if (x.isManager) => x.userName }
+     } else {
+       Seq(userName)
+     }) ++ getCollaboratorUserNames(userName, repositoryName, Seq(Role.ADMIN))
+  }
 
   /**
    * Updates the last activity date of the repository.
@@ -772,7 +773,7 @@ object RepositoryService {
   def httpUrl(owner: String, name: String)(implicit context: Context): String =
     s"${context.baseUrl}/git/${owner}/${name}.git"
   def sshUrl(owner: String, name: String)(implicit context: Context): Option[String] =
-    if (context.settings.ssh) {
+    if (context.settings.ssh.enabled) {
       context.settings.sshAddress.map { x =>
         s"ssh://${x.genericUser}@${x.host}:${x.port}/${owner}/${name}.git"
       }
