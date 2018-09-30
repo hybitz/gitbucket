@@ -69,7 +69,7 @@ trait SystemSettingsService {
       }
       props.setProperty(SsoAuthentication, settings.ssoAuthentication.toString)
       if (settings.ssoAuthentication) {
-        settings.sso.map { sso =>
+        settings.sso.foreach { sso =>
           props.setProperty(SsoHttpSsoHeader, sso.httpSsoHeader)
           sso.logout.foreach(x => props.setProperty(SsoLogout, x.toString))
         }
