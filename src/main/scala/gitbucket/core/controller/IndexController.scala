@@ -64,7 +64,7 @@ trait IndexControllerBase extends ControllerBase {
         val visibleOwnerSet: Set[String] = Set(account.userName) ++ getGroupsByUserName(account.userName)
         gitbucket.core.html.index(
           getRecentActivitiesByOwners(visibleOwnerSet),
-          getVisibleRepositories(None, withoutPhysicalInfo = true),
+          getVisibleRepositories(Some(account), withoutPhysicalInfo = true),
           showBannerToCreatePersonalAccessToken = hasAccountFederation(account.userName) && !hasAccessToken(
             account.userName
           )
@@ -249,9 +249,19 @@ trait IndexControllerBase extends ControllerBase {
         }
 
         target.toLowerCase match {
-          case "issue" =>
+          case "issues" =>
             gitbucket.core.search.html.issues(
-              if (query.nonEmpty) searchIssues(repository.owner, repository.name, query) else Nil,
+              if (query.nonEmpty) searchIssues(repository.owner, repository.name, query, false) else Nil,
+              false,
+              query,
+              page,
+              repository
+            )
+
+          case "pulls" =>
+            gitbucket.core.search.html.issues(
+              if (query.nonEmpty) searchIssues(repository.owner, repository.name, query, true) else Nil,
+              true,
               query,
               page,
               repository
