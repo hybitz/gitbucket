@@ -613,8 +613,12 @@ object JGitUtil {
     df.setRepository(git.getRepository)
     df.setDiffComparator(RawTextComparator.DEFAULT)
     df.setDetectRenames(true)
-    df.format(getDiffEntries(git, from, to).head)
-    new String(out.toByteArray, "UTF-8")
+    getDiffEntries(git, from, to)
+      .map { entry =>
+        df.format(entry)
+        new String(out.toByteArray, "UTF-8")
+      }
+      .mkString("\n")
   }
 
   private def getDiffEntries(git: Git, from: Option[String], to: String): Seq[DiffEntry] = {
@@ -740,15 +744,17 @@ object JGitUtil {
   def getBranchesOfCommit(git: Git, commitId: String): List[String] =
     using(new RevWalk(git.getRepository)) { revWalk =>
       defining(revWalk.parseCommit(git.getRepository.resolve(commitId + "^0"))) { commit =>
-        git.getRepository.getAllRefs.entrySet.asScala
+        git.getRepository.getRefDatabase
+          .getRefsByPrefix(Constants.R_HEADS)
+          .asScala
           .filter { e =>
-            (e.getKey.startsWith(Constants.R_HEADS) && revWalk.isMergedInto(
+            (revWalk.isMergedInto(
               commit,
-              revWalk.parseCommit(e.getValue.getObjectId)
+              revWalk.parseCommit(e.getObjectId)
             ))
           }
           .map { e =>
-            e.getValue.getName.substring(org.eclipse.jgit.lib.Constants.R_HEADS.length)
+            e.getName.substring(Constants.R_HEADS.length)
           }
           .toList
           .sorted
@@ -781,15 +787,17 @@ object JGitUtil {
   def getTagsOfCommit(git: Git, commitId: String): List[String] =
     using(new RevWalk(git.getRepository)) { revWalk =>
       defining(revWalk.parseCommit(git.getRepository.resolve(commitId + "^0"))) { commit =>
-        git.getRepository.getAllRefs.entrySet.asScala
+        git.getRepository.getRefDatabase
+          .getRefsByPrefix(Constants.R_TAGS)
+          .asScala
           .filter { e =>
-            (e.getKey.startsWith(Constants.R_TAGS) && revWalk.isMergedInto(
+            (revWalk.isMergedInto(
               commit,
-              revWalk.parseCommit(e.getValue.getObjectId)
+              revWalk.parseCommit(e.getObjectId)
             ))
           }
           .map { e =>
-            e.getValue.getName.substring(org.eclipse.jgit.lib.Constants.R_TAGS.length)
+            e.getName.substring(Constants.R_TAGS.length)
           }
           .toList
           .sorted

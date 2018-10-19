@@ -3,10 +3,10 @@ import com.typesafe.sbt.pgp.PgpKeys._
 
 val Organization = "io.github.gitbucket"
 val Name = "gitbucket"
-val GitBucketVersion = "4.28.0"
+val GitBucketVersion = "4.29.0"
 val ScalatraVersion = "2.6.3"
 val JettyVersion = "9.4.11.v20180605"
-val JgitVersion = "5.0.1.201806211838-r"
+val JgitVersion = "5.1.1.201809181055-r"
 
 lazy val root = (project in file("."))
   .enablePlugins(SbtTwirl, ScalatraPlugin)
@@ -17,7 +17,7 @@ sourcesInBase := false
 organization := Organization
 name := Name
 version := GitBucketVersion
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.7"
 
 scalafmtOnCompile := true
 
@@ -65,7 +65,7 @@ libraryDependencies ++= Seq(
   "javax.servlet"                   % "javax.servlet-api"            % "3.1.0" % "provided",
   "junit"                           % "junit"                        % "4.12" % "test",
   "org.scalatra"                    %% "scalatra-scalatest"          % ScalatraVersion % "test",
-  "org.mockito"                     % "mockito-core"                 % "2.13.0" % "test",
+  "org.mockito"                     % "mockito-core"                 % "2.19.1" % "test",
   "com.wix"                         % "wix-embedded-mysql"           % "3.0.0" % "test",
   "ru.yandex.qatools.embed"         % "postgresql-embedded"          % "2.6" % "test",
   "net.i2p.crypto"                  % "eddsa"                        % "0.2.0",
