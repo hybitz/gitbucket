@@ -77,6 +77,16 @@ trait SystemSettingsService {
       props.setProperty(SkinName, settings.skinName.toString)
       props.setProperty(ShowMailAddress, settings.showMailAddress.toString)
       props.setProperty(PluginNetworkInstall, settings.pluginNetworkInstall.toString)
+      settings.pluginProxy.foreach { proxy =>
+        props.setProperty(PluginProxyHost, proxy.host)
+        props.setProperty(PluginProxyPort, proxy.port.toString)
+        proxy.user.foreach { user =>
+          props.setProperty(PluginProxyUser, user)
+        }
+        proxy.password.foreach { password =>
+          props.setProperty(PluginProxyPassword, password)
+        }
+      }
 
       using(new java.io.FileOutputStream(GitBucketConf)) { out =>
         props.store(out, null)
@@ -119,9 +129,7 @@ trait SystemSettingsService {
               getOptionValue(props, SmtpFromName, None)
             )
           )
-        } else {
-          None
-        },
+        } else None,
         getValue(props, LdapAuthentication, false),
         if (getValue(props, LdapAuthentication, false)) {
           Some(
@@ -140,9 +148,7 @@ trait SystemSettingsService {
               getOptionValue(props, LdapKeystore, None)
             )
           )
-        } else {
-          None
-        },
+        } else None,
         getValue(props, OidcAuthentication, false),
         if (getValue(props, OidcAuthentication, false)) {
           Some(
@@ -169,7 +175,17 @@ trait SystemSettingsService {
         },
         getValue(props, SkinName, "skin-blue"),
         getValue(props, ShowMailAddress, false),
-        getValue(props, PluginNetworkInstall, false)
+        getValue(props, PluginNetworkInstall, false),
+        if (getValue(props, PluginProxyHost, "").nonEmpty) {
+          Some(
+            Proxy(
+              getValue(props, PluginProxyHost, ""),
+              getValue(props, PluginProxyPort, 8080),
+              getOptionValue(props, PluginProxyUser, None),
+              getOptionValue(props, PluginProxyPassword, None)
+            )
+          )
+        } else None
       )
     }
   }
@@ -201,7 +217,8 @@ object SystemSettingsService {
     sso: Option[Sso],
     skinName: String,
     showMailAddress: Boolean,
-    pluginNetworkInstall: Boolean
+    pluginNetworkInstall: Boolean,
+    pluginProxy: Option[Proxy]
   ) {
 
     def baseUrl(request: HttpServletRequest): String =
@@ -274,6 +291,13 @@ object SystemSettingsService {
     fromName: Option[String]
   )
 
+  case class Proxy(
+    host: String,
+    port: Int,
+    user: Option[String],
+    password: Option[String],
+  )
+
   case class SshAddress(host: String, port: Int, genericUser: String)
 
   case class Lfs(serverUrl: Option[String])
@@ -326,6 +350,10 @@ object SystemSettingsService {
   private val SkinName = "skinName"
   private val ShowMailAddress = "showMailAddress"
   private val PluginNetworkInstall = "plugin.networkInstall"
+  private val PluginProxyHost = "plugin.proxy.host"
+  private val PluginProxyPort = "plugin.proxy.port"
+  private val PluginProxyUser = "plugin.proxy.user"
+  private val PluginProxyPassword = "plugin.proxy.password"
 
   private def getValue[A: ClassTag](props: java.util.Properties, key: String, default: A): A = {
     getSystemProperty(key).getOrElse(getEnvironmentVariable(key).getOrElse {
