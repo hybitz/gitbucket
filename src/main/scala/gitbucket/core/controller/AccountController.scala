@@ -360,13 +360,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
 //        FileUtils.deleteDirectory(getWikiRepositoryDir(userName, repositoryName))
 //        FileUtils.deleteDirectory(getTemporaryDir(userName, repositoryName))
 //      }
-          // Remove from GROUP_MEMBER and COLLABORATOR
-          removeUserRelatedData(userName)
-          updateAccount(account.copy(isRemoved = true))
-
-          // call hooks
-          PluginRegistry().getAccountHooks.foreach(_.deleted(userName))
-
+          suspendAccount(account)
           session.invalidate
           redirect("/")
         }
@@ -427,7 +421,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
     redirect(s"/${userName}/_application")
   })
 
-  get("/:userName/_hooks")(oneselfOnly {
+  get("/:userName/_hooks")(managersOnly {
     val userName = params("userName")
     getAccountByUserName(userName).map { account =>
       gitbucket.core.account.html.hooks(account, getAccountWebHooks(account.userName), flash.get("info"))
@@ -437,7 +431,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   /**
    * Display the account web hook edit page.
    */
-  get("/:userName/_hooks/new")(oneselfOnly {
+  get("/:userName/_hooks/new")(managersOnly {
     val userName = params("userName")
     getAccountByUserName(userName).map { account =>
       val webhook = AccountWebHook(userName, "", WebHookContentType.FORM, None)
@@ -448,7 +442,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   /**
    * Add the account web hook URL.
    */
-  post("/:userName/_hooks/new", accountWebHookForm(false))(oneselfOnly { form =>
+  post("/:userName/_hooks/new", accountWebHookForm(false))(managersOnly { form =>
     val userName = params("userName")
     addAccountWebHook(userName, form.url, form.events, form.ctype, form.token)
     flash += "info" -> s"Webhook ${form.url} created"
@@ -458,7 +452,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   /**
    * Delete the account web hook URL.
    */
-  get("/:userName/_hooks/delete")(oneselfOnly {
+  get("/:userName/_hooks/delete")(managersOnly {
     val userName = params("userName")
     deleteAccountWebHook(userName, params("url"))
     flash += "info" -> s"Webhook ${params("url")} deleted"
@@ -468,7 +462,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   /**
    * Display the account web hook edit page.
    */
-  get("/:userName/_hooks/edit")(oneselfOnly {
+  get("/:userName/_hooks/edit")(managersOnly {
     val userName = params("userName")
     getAccountByUserName(userName).flatMap { account =>
       getAccountWebHook(userName, params("url")).map {
@@ -481,7 +475,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   /**
    * Update account web hook settings.
    */
-  post("/:userName/_hooks/edit", accountWebHookForm(true))(oneselfOnly { form =>
+  post("/:userName/_hooks/edit", accountWebHookForm(true))(managersOnly { form =>
     val userName = params("userName")
     updateAccountWebHook(userName, form.url, form.events, form.ctype, form.token)
     flash += "info" -> s"webhook ${form.url} updated"
@@ -491,7 +485,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   /**
    * Send the test request to registered account web hook URLs.
    */
-  ajaxPost("/:userName/_hooks/test")(oneselfOnly {
+  ajaxPost("/:userName/_hooks/test")(managersOnly {
     // TODO Is it possible to merge with [[RepositorySettingsController.ajaxPost]]?
     import scala.concurrent.duration._
     import scala.concurrent._

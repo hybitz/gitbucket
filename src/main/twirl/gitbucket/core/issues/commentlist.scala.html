@@ -6,6 +6,7 @@
   commitId: Option[String] = None,
   renderScript: Boolean = true)(implicit context: gitbucket.core.controller.Context)
 @import gitbucket.core.view.helpers
+@import gitbucket.core.util.StringUtil._
 @issueOrPullRequest()={ @if(issue.exists(_.isPullRequest))( "pull request" )else( "issue" ) }
 @showFormattedComment(comment: gitbucket.core.model.IssueComment)={
 <div class="panel panel-default issue-comment-box" id="comment-@comment.commentId">
@@ -32,12 +33,13 @@
   </div>
   <div class="panel-body markdown-body" id="commentContent-@comment.commentId">
     @helpers.markdown(
-      markdown = comment.content,
-      repository = repository,
-      enableWikiLink = false,
-      enableRefsLink = true,
-      enableLineBreaks = true,
-      enableTaskList = true,
+      markdown           = comment.content,
+      repository         = repository,
+      branch             = repository.repository.defaultBranch,
+      enableWikiLink     = false,
+      enableRefsLink     = true,
+      enableLineBreaks   = true,
+      enableTaskList     = true,
       hasWritePermission = isManageable
     )
   </div>
@@ -57,12 +59,13 @@
     </div>
     <div class="panel-body markdown-body" id="issueContent">
       @helpers.markdown(
-        markdown = issue.get.content getOrElse "No description provided.",
-        repository = repository,
-        enableWikiLink = false,
-        enableRefsLink = true,
-        enableLineBreaks = true,
-        enableTaskList = true,
+        markdown           = issue.get.content getOrElse "No description provided.",
+        repository         = repository,
+        branch             = repository.repository.defaultBranch,
+        enableWikiLink     = false,
+        enableRefsLink     = true,
+        enableLineBreaks   = true,
+        enableTaskList     = true,
         hasWritePermission = isManageable
       )
     </div>
@@ -235,7 +238,7 @@
             <span class="discussion-item-icon"><i class="octicon octicon-pencil"></i></span>
             @helpers.avatar(comment.commentedUserName, 16)
             @helpers.user(comment.commentedUserName, styleClass="username strong")
-            change title from <code>@comment.content.split("\r\n")(0)</code> to <code>@comment.content.split("\r\n")(1)</code>
+            change title from <code>@convertLineSeparator(comment.content, "LF").split("\n")(0)</code> to <code>@convertLineSeparator(comment.content, "LF").split("\n")(1)</code>
             @gitbucket.core.helper.html.datetimeago(comment.registeredDate)
           </div>
         </div>
@@ -268,12 +271,13 @@
       </div>
       <div class="panel-body markdown-body commit-commentContent-@comment.commentId">
         @helpers.markdown(
-          markdown = comment.content,
-          repository = repository,
-          enableWikiLink = false,
-          enableRefsLink = true,
-          enableLineBreaks = true,
-          enableTaskList = true,
+          markdown           = comment.content,
+          repository         = repository,
+          branch             = repository.repository.defaultBranch,
+          enableWikiLink     = false,
+          enableRefsLink     = true,
+          enableLineBreaks   = true,
+          enableTaskList     = true,
           hasWritePermission = isManageable
         )
       </div>

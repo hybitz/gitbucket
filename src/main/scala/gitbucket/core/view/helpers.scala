@@ -102,6 +102,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   def markdown(
     markdown: String,
     repository: RepositoryService.RepositoryInfo,
+    branch: String,
     enableWikiLink: Boolean,
     enableRefsLink: Boolean,
     enableLineBreaks: Boolean,
@@ -114,6 +115,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
       Markdown.toHtml(
         markdown = markdown,
         repository = repository,
+        branch = branch,
         enableWikiLink = enableWikiLink,
         enableRefsLink = enableRefsLink,
         enableAnchor = enableAnchor,
@@ -231,6 +233,12 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
           (m: Match) =>
             s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/commit/${m.group(3)}">${m.group(1)}/${m
               .group(2)}@${m.group(3).substring(0, 7)}</a>"""
+        )
+        .replaceAll(
+          "\\[release:([^\\s]+?)/([^\\s]+?)/([^\\s]+?)\\]",
+          (m: Match) =>
+            s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/releases/${encodeRefName(m.group(3))}">${m
+              .group(3)}</a>"""
         )
     )
 

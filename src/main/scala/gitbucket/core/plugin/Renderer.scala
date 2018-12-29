@@ -25,10 +25,13 @@ object MarkdownRenderer extends Renderer {
       Markdown.toHtml(
         markdown = fileContent,
         repository = repository,
+        branch = branch,
         enableWikiLink = enableWikiLink,
         enableRefsLink = enableRefsLink,
         enableAnchor = enableAnchor,
-        enableLineBreaks = false
+        enableLineBreaks = false,
+        enableTaskList = true,
+        hasWritePermission = false
       )(context)
     )
   }
